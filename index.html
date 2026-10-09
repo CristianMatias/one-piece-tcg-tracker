@@ -1,0 +1,3028 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="OP TCG" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#a8321f" />
+<title>OP TCG Tracker</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f4ef;
+    --card: #ffffff;
+    --border: #e2ded3;
+    --text: #1c1a16;
+    --text-secondary: #6b6558;
+    --text-muted: #9b9587;
+    --accent: #a8321f;
+    --accent-tint: #f6e3df;
+    --accent-text: #7a2416;
+    --success: #1f7a4d;
+    --success-bg: #e3f2e9;
+    --success-border: #bfe2cd;
+    --danger: #a8321f;
+    --danger-bg: #f9e6e2;
+    --danger-border: #edc3ba;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16140f;
+      --card: #201d17;
+      --border: #332f26;
+      --text: #f2efe8;
+      --text-secondary: #b6ae9c;
+      --text-muted: #837c6c;
+      --accent: #e05f45;
+      --accent-tint: #3a231d;
+      --accent-text: #f2a893;
+      --success: #4caf7d;
+      --success-bg: #1c2e22;
+      --success-border: #2c4534;
+      --danger: #e05f45;
+      --danger-bg: #33201b;
+      --danger-border: #4a2c24;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  .wrap { max-width: 460px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 19px; font-weight: 600; margin: 4px 0 2px; }
+  .sub { font-size: 13px; color: var(--text-secondary); margin: 0 0 18px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 16px 18px;
+    margin-bottom: 16px;
+  }
+  .label { font-size: 12px; color: var(--text-secondary); margin: 0 0 8px; font-weight: 500; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+  .chip {
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .chip.selected {
+    border-color: var(--accent);
+    background: var(--accent-tint);
+    color: var(--accent-text);
+    font-weight: 500;
+  }
+  .chip.add {
+    color: var(--text-secondary);
+    border-style: dashed;
+  }
+  input[type=text] {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--accent); }
+  textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .nav-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 4px 0 18px;
+  }
+  .nav-tab {
+    padding: 10px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+  }
+  .nav-tab.active {
+    border-color: var(--accent);
+    background: var(--accent-tint);
+    color: var(--accent-text);
+  }
+  .deck-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 1.1rem; }
+  .deck-chip {
+    flex: 0 0 auto;
+    background: var(--bg);
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    padding: 8px 12px;
+    min-width: 100px;
+    text-align: left;
+    font-family: inherit;
+  }
+  .deck-chip.active { border-color: var(--accent); }
+  .deck-chip.new { display: flex; align-items: center; justify-content: center; gap: 4px; color: var(--text-secondary); min-width: 88px; }
+  .deck-chip-name { font-size: 12.5px; font-weight: 500; margin: 0; }
+  .deck-chip.active .deck-chip-name { color: var(--accent-text); }
+  .deck-chip-sub { font-size: 11px; color: var(--text-muted); margin: 2px 0 0; }
+  .deck-card-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .deck-card-row:last-child { border-bottom: none; }
+  .deck-card-code { font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .deck-card-del { background: none; border: none; color: var(--text-muted); font-size: 15px; padding: 2px 4px; }
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: 8px;
+  }
+  .card-cell {
+    position: relative;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 6px 6px;
+    text-align: center;
+    background: var(--bg);
+  }
+  .card-cell.leader { border-color: var(--accent); }
+  .card-cell .cell-code {
+    font-size: 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    display: block;
+    word-break: break-all;
+  }
+  .card-cell .cell-qty {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent-text);
+    display: block;
+    margin-top: 3px;
+  }
+  .card-cell .cell-leader-tag {
+    font-size: 8px;
+    font-weight: 700;
+    color: var(--accent);
+    display: block;
+    margin-top: 2px;
+    letter-spacing: 0.02em;
+  }
+  .card-cell .cell-controls { display: flex; justify-content: center; gap: 4px; margin-top: 5px; }
+  .card-cell .cell-controls .qty-btn { width: 18px; height: 18px; font-size: 11px; }
+  .card-cell .cell-del {
+    position: absolute;
+    top: 1px;
+    right: 3px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1;
+    padding: 2px;
+  }
+  .qty-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1;
+    padding: 0;
+    font-family: inherit;
+  }
+  .combo-wrap { position: relative; }
+  .combo-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 2px;
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 60;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  }
+  .combo-dropdown.show { display: block; }
+  .combo-row {
+    padding: 9px 11px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .combo-row.highlight { background: var(--accent-tint); color: var(--accent-text); }
+  .combo-row.combo-add {
+    color: var(--accent);
+    font-weight: 500;
+    border-top: 1px solid var(--border);
+  }
+  .combo-empty { padding: 9px 11px; font-size: 12px; color: var(--text-muted); }
+  .torneo-round {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  .torneo-round.pending { border-style: dashed; opacity: 0.6; }
+  .torneo-round-label { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; }
+  .torneo-round-row { display: flex; gap: 8px; align-items: center; }
+  .vd-btn {
+    width: 34px;
+    padding: 7px 0;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-family: inherit;
+  }
+  .vd-btn.win.selected { border-color: var(--success-border); background: var(--success-bg); color: var(--success); }
+  .vd-btn.lose.selected { border-color: var(--danger-border); background: var(--danger-bg); color: var(--danger); }
+  .warning-box {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-border);
+    border-radius: var(--radius);
+    padding: 10px;
+    margin-bottom: 10px;
+    font-size: 11.5px;
+    color: var(--danger);
+  }
+  .deck-photo-row {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: none;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+  }
+  .leader-photo {
+    display: block;
+    max-width: 220px;
+    width: 100%;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    margin: 0 auto;
+  }
+  .leader-preview-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 1.1rem;
+  }
+  .leader-preview-card { flex: 1; text-align: center; min-width: 0; }
+  .leader-preview-img-box {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    min-height: 160px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .leader-preview-img-box.clickable { cursor: pointer; border-style: dashed; }
+  .leader-preview-img-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .leader-preview-select {
+    margin-top: 6px;
+    font-size: 12.5px;
+    padding: 8px 6px;
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .btn {
+    padding: 11px 6px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    text-align: center;
+  }
+  .btn.selected {
+    border-color: var(--accent);
+    background: var(--accent-tint);
+    color: var(--accent-text);
+    font-weight: 500;
+  }
+  .btn-win {
+    padding: 14px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--success-border);
+    background: transparent;
+    color: var(--success);
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+  }
+  .btn-win.selected { background: var(--success-bg); }
+  .btn-lose {
+    padding: 14px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--danger-border);
+    background: transparent;
+    color: var(--danger);
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+  }
+  .btn-lose.selected { background: var(--danger-bg); }
+  .section-gap { margin-top: 16px; }
+  .error { font-size: 12px; color: var(--danger); margin-top: 6px; display: none; }
+  .save-btn {
+    width: 100%;
+    padding: 13px;
+    border-radius: var(--radius);
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    margin-top: 18px;
+  }
+  .save-btn:active { opacity: 0.85; }
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--text);
+    color: var(--bg);
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .stats-row { display: flex; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 14px; }
+  .stat { flex: 1; text-align: center; }
+  .stat .num { font-size: 19px; font-weight: 600; margin: 0; }
+  .stat .lab { font-size: 10.5px; color: var(--text-muted); margin: 3px 0 0; }
+  .stats-note { font-size: 11px; color: var(--text-muted); text-align: center; margin: 10px 0 0; }
+  .history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-left { display: flex; flex-direction: column; gap: 2px; }
+  .history-main { font-size: 13.5px; font-weight: 500; }
+  .history-sub { font-size: 11.5px; color: var(--text-muted); }
+  .history-badges { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
+  .hbadge { width: 19px; height: 19px; border-radius: 50%; border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; background: var(--bg); }
+  .history-date { font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px; }
+  .result-box { width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .result-box.win { background: var(--success-bg); color: var(--success); }
+  .result-box.lose { background: var(--danger-bg); color: var(--danger); }
+  .history-item { display: grid; grid-template-columns: minmax(0, 1fr) 68px 26px 22px; align-items: center; gap: 8px; }
+  .history-item .history-badges { width: 68px; justify-content: flex-start; margin-top: 0; }
+  .history-item .del-btn { justify-self: center; }
+  .result-pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .result-pill.win { background: var(--success-bg); color: var(--success); }
+  .result-pill.lose { background: var(--danger-bg); color: var(--danger); }
+  .history-right { display: flex; align-items: center; gap: 10px; }
+  .del-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 16px;
+    padding: 4px;
+    line-height: 1;
+  }
+  .empty { font-size: 13px; color: var(--text-muted); text-align: center; padding: 12px 0; }
+  .debug-banner {
+    display: none;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid var(--danger-border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-size: 12px;
+    margin-bottom: 14px;
+  }
+  .select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .select:focus { outline: none; border-color: var(--accent); }
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 50;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 18px 16px 16px;
+    width: 100%;
+    max-width: 320px;
+    border: 1px solid var(--border);
+  }
+  .modal-title { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+  .modal-btn {
+    padding: 11px 6px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    text-align: center;
+  }
+  .modal-btn.primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+  }
+  .link-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-decoration: underline;
+    padding: 4px 0;
+    font-family: inherit;
+  }
+  .colors-overlay .modal-card {
+    max-width: 380px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .torneos-modal-card {
+    max-width: 460px;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .colors-list {
+    overflow-y: auto;
+    margin: 4px 0 14px;
+  }
+  .color-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+  }
+  .color-row:last-child { border-bottom: none; }
+  .color-row-name { font-size: 13px; flex: 1; }
+  .color-row-chips { display: flex; gap: 5px; flex-shrink: 0; }
+  .color-chip {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+  }
+  .color-chip[data-color="B"].active { background: #2b2b2b; border-color: #2b2b2b; color: #fff; }
+  .color-chip[data-color="U"].active { background: #2f6fed; border-color: #2f6fed; color: #fff; }
+  .color-chip[data-color="Y"].active { background: #e8b93b; border-color: #e8b93b; color: #241c04; }
+  .color-chip[data-color="R"].active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .color-chip[data-color="G"].active { background: #2f8f4e; border-color: #2f8f4e; color: #fff; }
+  .color-chip[data-color="P"].active { background: #7a3fa0; border-color: #7a3fa0; color: #fff; }
+  .color-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 9.5px;
+    font-weight: 700;
+    margin-left: 4px;
+  }
+  .color-badge.B { background: #2b2b2b; color: #fff; }
+  .color-badge.U { background: #2f6fed; color: #fff; }
+  .color-badge.Y { background: #e8b93b; color: #241c04; }
+  .color-badge.R { background: var(--accent); color: #fff; }
+  .color-badge.G { background: #2f8f4e; color: #fff; }
+  .color-badge.P { background: #7a3fa0; color: #fff; }
+  .color-badge.X { background: transparent; border: 1.5px dashed var(--text-muted); color: var(--text-muted); }
+  .perf-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+  }
+  .perf-row:last-child { border-bottom: none; }
+  .perf-left { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 0; }
+  .perf-name { font-size: 13px; margin-right: 4px; }
+  .perf-right { text-align: right; flex-shrink: 0; }
+  .perf-pct { font-size: 14px; font-weight: 600; }
+  .perf-pct.good { color: var(--success); }
+  .perf-pct.bad { color: var(--danger); }
+  .perf-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+  .col { display: contents; }
+  .tab-mazos { display: none; }
+
+  @media (min-width: 1200px) {
+    .wrap { max-width: 1440px; padding: 28px 24px 48px; }
+    h1 { font-size: 22px; }
+    .nav-tabs { display: none; }
+    .tab-registro, .tab-mazos { display: block !important; }
+    .app-columns {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      flex: 1;
+      min-width: 0;
+      max-height: calc(100vh - 150px);
+      overflow-y: auto;
+      padding-right: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .col::-webkit-scrollbar { width: 6px; }
+    .col::-webkit-scrollbar-track { background: transparent; }
+    .col::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+    .col::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+    <div>
+      <h1>One Piece TCG</h1>
+      <p class="sub">Registro de partidas y mazos</p>
+    </div>
+    <button class="modal-btn" id="open-torneos-btn" type="button" style="flex-shrink:0;">Torneos</button>
+  </div>
+  <div class="debug-banner" id="debug-banner"></div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="tab-registro" type="button">Registro</button>
+    <button class="nav-tab" id="tab-mazos" type="button">Mazos</button>
+  </div>
+
+  <div class="app-columns">
+
+  <div class="col col-1">
+  <div class="card tab-registro">
+    <div class="leader-preview-row">
+      <div class="leader-preview-card">
+        <p class="label">Mi lider</p>
+        <div class="leader-preview-img-box" id="mi-lider-photo-box"></div>
+        <div class="combo-wrap">
+          <input type="text" id="mi-lider-search" class="select leader-preview-select" placeholder="Buscar..." autocomplete="off" style="margin-top:6px;" />
+          <div class="combo-dropdown" id="mi-lider-dropdown"></div>
+        </div>
+        <select class="select leader-preview-select" id="mi-lider-select" style="display:none;"></select>
+      </div>
+      <div class="leader-preview-card">
+        <p class="label">Lider rival</p>
+        <div class="leader-preview-img-box" id="rival-photo-box"></div>
+        <div class="combo-wrap">
+          <input type="text" id="rival-search" class="select leader-preview-select" placeholder="Buscar..." autocomplete="off" style="margin-top:6px;" />
+          <div class="combo-dropdown" id="rival-dropdown"></div>
+        </div>
+        <select class="select leader-preview-select" id="rival-select" style="display:none;"></select>
+      </div>
+    </div>
+
+    <div class="section-gap">
+      <p class="label">Tipo de partida</p>
+      <div class="row3">
+        <button class="btn" data-group="tipo" data-value="Casual" type="button">Casual</button>
+        <button class="btn" data-group="tipo" data-value="Ranked" type="button">Ranked</button>
+        <button class="btn" data-group="tipo" data-value="Entrenamiento" type="button">Entrenamiento</button>
+      </div>
+    </div>
+
+    <button class="link-btn" id="manage-colors-btn" type="button" style="margin-top:8px;">Colores de lideres</button>
+
+    <div class="section-gap">
+      <p class="label">Turno</p>
+      <div class="row2">
+        <button class="btn" data-group="turno" data-value="Primero" type="button">Primero</button>
+        <button class="btn" data-group="turno" data-value="Segundo" type="button">Segundo</button>
+      </div>
+    </div>
+
+    <div class="section-gap">
+      <p class="label">Sensacion de manos</p>
+      <div class="row3">
+        <button class="btn" data-group="mano" data-value="Buena" type="button">Buena</button>
+        <button class="btn" data-group="mano" data-value="Regular" type="button">Regular</button>
+        <button class="btn" data-group="mano" data-value="Mala" type="button">Mala</button>
+      </div>
+    </div>
+
+    <div class="section-gap">
+      <p class="label">Resultado</p>
+      <div class="row2">
+        <button class="btn-win" data-group="resultado" data-value="Victoria" type="button">Gane</button>
+        <button class="btn-lose" data-group="resultado" data-value="Derrota" type="button">Perdi</button>
+      </div>
+    </div>
+
+    <p class="error" id="form-error">Completa todos los campos antes de guardar.</p>
+    <button class="save-btn" id="save-btn" type="button">Guardar partida</button>
+  </div>
+  </div>
+
+  <div class="col col-2">
+  <div class="card tab-mazos">
+    <div style="display:flex; justify-content:center; gap:8px; margin-bottom:10px;">
+      <button class="modal-btn" id="export-decks-btn" type="button" style="padding:6px 10px; font-size:12px;">Exportar mazos</button>
+      <button class="modal-btn" id="import-decks-btn" type="button" style="padding:6px 10px; font-size:12px;">Importar mazos</button>
+    </div>
+    <input type="file" id="import-decks-file" accept="application/json" style="display:none;" />
+
+    <p class="label">Lider del mazo</p>
+    <p id="deck-leader-display" style="font-size:14px; font-weight:600; margin:0 0 10px;">-</p>
+
+    <div class="section-gap">
+      <p class="label">Colores del mazo</p>
+      <div style="display:flex; gap:8px;" id="deck-color-chips"></div>
+    </div>
+
+    <div class="section-gap">
+      <p class="label">Nombre del mazo (opcional)</p>
+      <input type="text" id="deck-name-input" placeholder="ej. UP control torneo" />
+    </div>
+
+    <div class="section-gap">
+      <p class="label">Foto del lider</p>
+      <div id="leader-photo-box"></div>
+      <input type="file" id="leader-photo-input" accept="image/*" style="display:none;" />
+    </div>
+
+    <div class="section-gap">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+        <p class="label" style="margin-bottom:0;">Pegar lista completa</p>
+        <span style="font-size:10.5px; color:var(--text-muted);">1x por linea</span>
+      </div>
+      <textarea id="deck-bulk-input" rows="4" placeholder="1xOP01-016&#10;2xOP03-002&#10;4xOP01-025"></textarea>
+      <button class="modal-btn primary" id="deck-load-list-btn" type="button" style="width:100%; margin-top:8px;">Cargar lista</button>
+    </div>
+
+    <div class="section-gap">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:8px;">
+        <p class="label" style="margin-bottom:0;">Cartas del mazo</p>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:11px; color:var(--text-muted); white-space:nowrap;" id="deck-card-count">0/51 cartas</span>
+          <button class="modal-btn" id="copy-list-btn" type="button" style="padding:4px 8px; font-size:11px;">Copiar</button>
+        </div>
+      </div>
+      <div style="background:var(--bg); border-radius:var(--radius); padding:2px 10px;" id="deck-cards-list">
+        <p class="empty">Todavia no has anadido cartas.</p>
+      </div>
+    </div>
+
+    <div class="section-gap">
+      <button class="deck-photo-row" id="deck-photo-btn" type="button">
+        <span style="flex:1;">
+          <p style="font-size:12px; margin:0; color:var(--text-secondary);">Fotos de cartas</p>
+          <p style="font-size:11px; margin:2px 0 0; color:var(--text-muted);">Buscar imagen o subir foto - proximamente</p>
+        </span>
+      </button>
+    </div>
+
+    <p class="error" id="deck-error">Elige un lider y anade al menos una carta.</p>
+    <div class="row2" style="margin-top:18px;">
+      <button class="modal-btn" id="deck-delete-btn" type="button">Borrar mazo</button>
+      <button class="modal-btn primary" id="deck-save-btn" type="button">Guardar mazo</button>
+    </div>
+  </div>
+  </div>
+
+  <div class="col col-3">
+  <div class="card tab-registro">
+    <div class="stats-row" style="border-top:none; margin-top:0; padding-top:0;">
+      <div class="stat">
+        <p class="num" id="stat-winrate">-</p>
+        <p class="lab" id="stat-winrate-label">Winrate lider activo</p>
+      </div>
+      <div class="stat">
+        <p class="num" id="stat-total">0</p>
+        <p class="lab">Partidas totales</p>
+      </div>
+      <div class="stat">
+        <p class="num" id="stat-best-turn-value">-</p>
+        <p class="lab" id="stat-best-turn-label">Mejor turno</p>
+      </div>
+    </div>
+    <div class="stats-row" style="margin-top:8px;">
+      <div class="stat">
+        <p class="num" id="stat-winrate-first">-</p>
+        <p class="lab">Winrate yendo primero</p>
+        <p class="lab" id="stat-total-first"></p>
+      </div>
+      <div class="stat">
+        <p class="num" id="stat-winrate-second">-</p>
+        <p class="lab">Winrate yendo segundo</p>
+        <p class="lab" id="stat-total-second"></p>
+      </div>
+    </div>
+    <div class="stats-row" style="margin-top:8px;">
+      <div class="stat">
+        <p class="num" id="stat-streak-current">-</p>
+        <p class="lab">Racha actual</p>
+      </div>
+      <div class="stat">
+        <p class="num" id="stat-streak-longest">-</p>
+        <p class="lab">Racha mas larga (victorias)</p>
+      </div>
+    </div>
+    <p class="stats-note" id="stats-note">Selecciona un lider arriba para ver sus estadisticas.</p>
+  </div>
+
+  <div class="card tab-registro">
+    <p class="label" style="margin-bottom:10px;">Rendimiento por color rival</p>
+    <div id="color-stats-list"><p class="empty">Cargando...</p></div>
+  </div>
+
+  <div class="card tab-registro">
+    <p class="label" style="margin-bottom:10px;">Mejor y peor rival</p>
+    <div id="rival-stats-list"><p class="empty">Cargando...</p></div>
+  </div>
+  </div>
+
+  <div class="col col-4">
+  <div class="card tab-registro">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <p class="label" style="margin-bottom:0;">Historial</p>
+      <div style="display:flex; gap:8px;">
+        <button class="modal-btn" id="export-btn" type="button" style="padding:6px 10px; font-size:12px;">Exportar</button>
+        <button class="modal-btn" id="import-btn" type="button" style="padding:6px 10px; font-size:12px;">Importar</button>
+      </div>
+    </div>
+    <input type="file" id="import-file" accept="application/json" style="display:none;" />
+    <div style="display:flex; gap:6px; margin-bottom:10px;" id="history-color-filter"></div>
+    <div id="history-exact-match" style="margin-bottom:8px;"></div>
+    <div style="display:flex; gap:8px; margin-bottom:10px;">
+      <input type="text" id="history-filter-input" class="select" placeholder="Filtrar por lider..." autocomplete="off" style="flex:1;" />
+      <select class="select" id="history-filter-tipo" style="flex:0 0 auto; width:auto;">
+        <option value="Todos">Todos</option>
+        <option value="Casual">Casual</option>
+        <option value="Ranked">Ranked</option>
+        <option value="Entrenamiento">Entrenamiento</option>
+        <option value="Torneo">Torneo</option>
+      </select>
+    </div>
+    <div id="history-list"><p class="empty">Cargando...</p></div>
+  </div>
+  </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast">Partida guardada</div>
+
+<div class="modal-overlay" id="torneos-overlay">
+  <div class="modal-card torneos-modal-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <p class="modal-title" style="margin:0;">Torneos</p>
+      <button class="modal-btn" id="torneos-close" type="button">Cerrar</button>
+    </div>
+
+    <p class="label" style="margin-bottom:10px;">Nuevo torneo</p>
+
+    <p class="label">Participantes</p>
+    <input type="text" id="torneo-participants-input" placeholder="ej. 16" inputmode="numeric" />
+
+    <div class="section-gap">
+      <p class="label">Mazo con el que voy</p>
+      <div class="combo-wrap">
+        <input type="text" id="torneo-leader-search" class="select" placeholder="Buscar lider..." autocomplete="off" style="margin-bottom:6px;" />
+        <div class="combo-dropdown" id="torneo-leader-dropdown"></div>
+      </div>
+      <select class="select" id="torneo-leader-select" style="display:none;"></select>
+    </div>
+
+    <div class="section-gap">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <p class="label" style="margin-bottom:0;">Rondas</p>
+        <p style="font-size:13px; font-weight:600;" id="torneo-tally">0V - 0D</p>
+      </div>
+      <div id="torneo-rounds"></div>
+      <button class="link-btn" id="torneo-add-round-btn" type="button" style="margin-top:6px;">+ Anadir ronda</button>
+    </div>
+
+    <div class="section-gap">
+      <p class="label">Posicion final</p>
+      <input type="text" id="torneo-position-input" placeholder="ej. 5" inputmode="numeric" />
+    </div>
+
+    <p class="error" id="torneo-error">Completa participantes, mazo, todas las rondas y la posicion final.</p>
+
+    <div id="torneo-save-area">
+      <button class="save-btn" id="torneo-save-btn" type="button">Guardar torneo</button>
+    </div>
+
+    <div class="section-gap">
+      <p class="label" style="margin-bottom:10px;">Historial de torneos</p>
+      <div id="torneo-history-list"><p class="empty">Cargando...</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-card">
+    <p class="modal-title" id="modal-title">Anadir lider</p>
+    <input type="text" id="modal-input" placeholder="Nombre del lider" />
+    <p class="error" id="modal-error">Escribe un nombre antes de guardar.</p>
+    <div class="row2" style="margin-top:14px;">
+      <button class="modal-btn" id="modal-cancel" type="button">Cancelar</button>
+      <button class="modal-btn primary" id="modal-confirm" type="button">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay colors-overlay" id="colors-overlay">
+  <div class="modal-card">
+    <p class="modal-title">Colores de lideres</p>
+    <p style="font-size:11.5px; color:var(--text-muted); margin:-6px 0 10px;">
+      Se detectan solo por las ultimas letras del nombre. Toca un color para asignarlo o quitarlo (maximo 2). B=Negro U=Azul Y=Amarillo R=Rojo G=Verde P=Purpura.
+    </p>
+    <div class="colors-list" id="colors-list"></div>
+    <button class="modal-btn primary" id="colors-close" type="button">Cerrar</button>
+  </div>
+</div>
+
+<script>
+window.addEventListener('error', function (e) {
+  const el = document.getElementById('debug-banner');
+  if (el) {
+    el.textContent = 'Hubo un error en la app: ' + e.message;
+    el.style.display = 'block';
+  }
+});
+
+const DEFAULT_LEADERS = ["Yamato B", "Yamato Elbaf", "Sabo Elbaf", "Luffy UP", "Nico Robin PY", "Luffy y Ace RG"];
+const LEADERS_KEY = 'op_tcg_leaders';
+const LEGACY_RIVAL_LEADERS_KEY = 'op_tcg_rival_leaders';
+const MATCHES_KEY = 'op_tcg_matches';
+const LEADER_COLORS_KEY = 'op_tcg_leader_colors';
+const DECKS_KEY = 'op_tcg_decks';
+const LEADER_PHOTOS_KEY = 'op_tcg_leader_photos';
+const TOURNAMENTS_KEY = 'op_tcg_tournaments';
+const NORMAL_MAX_COPIES = 4;
+const SPECIAL_MAX_COPIES = { 'OP16-042': 50 }; // Impel Down Prisoners
+const MAX_DECK_SIZE = 51; // 1 lider + 50 cartas
+
+function maxCopiesFor(code) {
+  return SPECIAL_MAX_COPIES[code] || NORMAL_MAX_COPIES;
+}
+
+function deckTotalCards() {
+  return currentDeck.cards.reduce((sum, c) => sum + c.qty, 0);
+}
+const ADD_OPTION = '__add__';
+const COLOR_LETTERS = ['B', 'U', 'Y', 'R', 'G', 'P'];
+const COLOR_NAMES = { B: 'Negro', U: 'Azul', Y: 'Amarillo', R: 'Rojo', G: 'Verde', P: 'Purpura' };
+
+let leaders = [];
+let matches = [];
+let leaderColors = {};
+let decks = [];
+let currentDeck = null;
+let leaderPhotos = {};
+let tournaments = [];
+let torneoDraft = null;
+let torneoConfirmPending = false;
+let selectedLeader = null;
+let selectedRival = '';
+let modalTarget = null;
+let selections = { turno: null, mano: null, resultado: null, tipo: null };
+
+const tabRegistro = document.getElementById('tab-registro');
+const tabMazos = document.getElementById('tab-mazos');
+const miLiderSelect = document.getElementById('mi-lider-select');
+const miLiderSearch = document.getElementById('mi-lider-search');
+const miLiderDropdown = document.getElementById('mi-lider-dropdown');
+const rivalSelect = document.getElementById('rival-select');
+const rivalSearch = document.getElementById('rival-search');
+const rivalDropdown = document.getElementById('rival-dropdown');
+const historyList = document.getElementById('history-list');
+const colorStatsList = document.getElementById('color-stats-list');
+const rivalStatsList = document.getElementById('rival-stats-list');
+const historyFilterInput = document.getElementById('history-filter-input');
+const historyColorFilterEl = document.getElementById('history-color-filter');
+let historyColorFilter = [];
+const historyFilterTipo = document.getElementById('history-filter-tipo');
+const toast = document.getElementById('toast');
+const formError = document.getElementById('form-error');
+const debugBanner = document.getElementById('debug-banner');
+const statWinrate = document.getElementById('stat-winrate');
+const statTotal = document.getElementById('stat-total');
+const statBestTurnValue = document.getElementById('stat-best-turn-value');
+const statWinrateFirst = document.getElementById('stat-winrate-first');
+const statWinrateSecond = document.getElementById('stat-winrate-second');
+const statBestTurnLabel = document.getElementById('stat-best-turn-label');
+const statsNote = document.getElementById('stats-note');
+const modalOverlay = document.getElementById('modal-overlay');
+const modalTitle = document.getElementById('modal-title');
+const modalInput = document.getElementById('modal-input');
+const modalError = document.getElementById('modal-error');
+const modalCancel = document.getElementById('modal-cancel');
+const modalConfirm = document.getElementById('modal-confirm');
+const manageColorsBtn = document.getElementById('manage-colors-btn');
+const colorsOverlay = document.getElementById('colors-overlay');
+const colorsList = document.getElementById('colors-list');
+const colorsClose = document.getElementById('colors-close');
+const deckLeaderDisplay = document.getElementById('deck-leader-display');
+const deckNameInput = document.getElementById('deck-name-input');
+const deckBulkInput = document.getElementById('deck-bulk-input');
+const deckLoadListBtn = document.getElementById('deck-load-list-btn');
+const deckCardsList = document.getElementById('deck-cards-list');
+const deckCardCount = document.getElementById('deck-card-count');
+const deckPhotoBtn = document.getElementById('deck-photo-btn');
+const deckError = document.getElementById('deck-error');
+const deckSaveBtn = document.getElementById('deck-save-btn');
+const deckDeleteBtn = document.getElementById('deck-delete-btn');
+const copyListBtn = document.getElementById('copy-list-btn');
+const torneoParticipantsInput = document.getElementById('torneo-participants-input');
+const torneoLeaderSelect = document.getElementById('torneo-leader-select');
+const torneoLeaderSearch = document.getElementById('torneo-leader-search');
+const torneoLeaderDropdown = document.getElementById('torneo-leader-dropdown');
+const torneoRoundsEl = document.getElementById('torneo-rounds');
+const torneoAddRoundBtn = document.getElementById('torneo-add-round-btn');
+const torneoTallyEl = document.getElementById('torneo-tally');
+const torneoPositionInput = document.getElementById('torneo-position-input');
+const torneoError = document.getElementById('torneo-error');
+const torneoSaveArea = document.getElementById('torneo-save-area');
+const torneoHistoryList = document.getElementById('torneo-history-list');
+
+
+
+// localStorage is synchronous and lives on the device itself, so this
+// works when the page is saved to the home screen and opened as its own
+// app - no network, no Claude session needed.
+function storageAvailable() {
+  try {
+    const k = '__op_tcg_test__';
+    localStorage.setItem(k, '1');
+    localStorage.removeItem(k);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+const HAS_STORAGE = storageAvailable();
+
+function loadLeaders() {
+  if (!HAS_STORAGE) return DEFAULT_LEADERS.slice();
+  try {
+    const raw = localStorage.getItem(LEADERS_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    let list = (parsed && parsed.length) ? parsed : DEFAULT_LEADERS.slice();
+
+    // One-time migration: earlier versions of this app kept "mi lider" and
+    // "lider rival" as two separate lists. Merge any leftover names from
+    // the old rival list into the shared list, then drop the old key.
+    const legacyRaw = localStorage.getItem(LEGACY_RIVAL_LEADERS_KEY);
+    if (legacyRaw) {
+      try {
+        const legacyList = JSON.parse(legacyRaw);
+        if (Array.isArray(legacyList)) {
+          legacyList.forEach(name => {
+            if (typeof name === 'string' && name && !list.includes(name)) list.push(name);
+          });
+        }
+      } catch (e) { /* ignore malformed legacy data */ }
+      localStorage.removeItem(LEGACY_RIVAL_LEADERS_KEY);
+      localStorage.setItem(LEADERS_KEY, JSON.stringify(list));
+    }
+
+    return list;
+  } catch (e) {
+    return DEFAULT_LEADERS.slice();
+  }
+}
+
+function saveLeaders() {
+  if (!HAS_STORAGE) return;
+  try {
+    localStorage.setItem(LEADERS_KEY, JSON.stringify(leaders));
+  } catch (e) {
+    showToast('No se pudo guardar el lider en el telefono');
+  }
+}
+
+// Reads the color(s) of a leader from the tail of its name: the last
+// "word" must be made up only of known color letters (1 or 2 of them,
+// e.g. "B", "RG"). Anything else - a normal word like "Elbaf", or an
+// unrecognised letter - means the color is unknown until assigned by hand.
+function autoDetectColors(name) {
+  const parts = name.trim().split(/\s+/);
+  const last = (parts[parts.length - 1] || '').toUpperCase();
+  if (last.length < 1 || last.length > 2) return [];
+  const letters = last.split('');
+  const allValid = letters.every(ch => COLOR_LETTERS.includes(ch));
+  if (!allValid) return [];
+  return [...new Set(letters)];
+}
+
+function loadLeaderColors() {
+  if (!HAS_STORAGE) return {};
+  try {
+    const raw = localStorage.getItem(LEADER_COLORS_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveLeaderColors() {
+  if (!HAS_STORAGE) return;
+  try {
+    localStorage.setItem(LEADER_COLORS_KEY, JSON.stringify(leaderColors));
+  } catch (e) {
+    showToast('No se pudo guardar el color en el telefono');
+  }
+}
+
+// Makes sure every leader in the shared list has a color entry (auto
+// detected the first time it's seen), without overwriting any manual
+// assignment already saved for that leader.
+function ensureColorsForLeaders() {
+  let changed = false;
+  leaders.forEach(name => {
+    if (!(name in leaderColors)) {
+      leaderColors[name] = autoDetectColors(name);
+      changed = true;
+    }
+  });
+  if (changed) saveLeaderColors();
+}
+
+function loadMatches() {
+  if (!HAS_STORAGE) return [];
+  try {
+    const raw = localStorage.getItem(MATCHES_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    const list = Array.isArray(parsed) ? parsed : [];
+    // Matches saved before "tipo" existed default to Casual.
+    list.forEach(m => {
+      if (!m.tipo) m.tipo = 'Casual';
+    });
+    return list;
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveMatches() {
+  if (!HAS_STORAGE) return;
+  try {
+    localStorage.setItem(MATCHES_KEY, JSON.stringify(matches));
+  } catch (e) {
+    showToast('No se pudo guardar en el telefono');
+  }
+}
+
+function loadDecks() {
+  if (!HAS_STORAGE) return [];
+  try {
+    const raw = localStorage.getItem(DECKS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveDecks() {
+  if (!HAS_STORAGE) return;
+  try {
+    localStorage.setItem(DECKS_KEY, JSON.stringify(decks));
+  } catch (e) {
+    showToast('No se pudo guardar el mazo en el telefono');
+  }
+}
+
+function loadTournaments() {
+  if (!HAS_STORAGE) return [];
+  try {
+    const raw = localStorage.getItem(TOURNAMENTS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveTournaments() {
+  if (!HAS_STORAGE) return;
+  try {
+    localStorage.setItem(TOURNAMENTS_KEY, JSON.stringify(tournaments));
+  } catch (e) {
+    showToast('No se pudo guardar el torneo en el telefono');
+  }
+}
+
+function loadLeaderPhotos() {
+  let photos = {};
+  if (HAS_STORAGE) {
+    try {
+      const raw = localStorage.getItem(LEADER_PHOTOS_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed && typeof parsed === 'object') photos = parsed;
+    } catch (e) {
+      photos = {};
+    }
+  }
+  // One-time migration: an earlier version stored the photo on each deck
+  // individually. Pull any of those into the shared per-leader store.
+  let migrated = false;
+  decks.forEach(d => {
+    if (d.leaderPhoto && d.leader && !photos[d.leader]) {
+      photos[d.leader] = d.leaderPhoto;
+      migrated = true;
+    }
+  });
+  if (migrated) saveLeaderPhotosData(photos);
+  return photos;
+}
+
+function saveLeaderPhotosData(photos) {
+  if (!HAS_STORAGE) return;
+  try {
+    localStorage.setItem(LEADER_PHOTOS_KEY, JSON.stringify(photos));
+  } catch (e) {
+    showToast('No se pudo guardar la foto en el telefono');
+  }
+}
+
+function saveLeaderPhotos() {
+  saveLeaderPhotosData(leaderPhotos);
+}
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1600);
+}
+
+function photoBoxContentHtml(name) {
+  const photo = name ? leaderPhotos[name] : null;
+  return photo ? '<img src="' + photo + '" alt="' + escapeHtml(name) + '" />' : placeholderImageSvg();
+}
+
+function renderLeaderPreview() {
+  const miBox = document.getElementById('mi-lider-photo-box');
+  const rivalBox = document.getElementById('rival-photo-box');
+  if (miBox) {
+    miBox.innerHTML = photoBoxContentHtml(selectedLeader);
+    miBox.classList.toggle('clickable', !leaderPhotos[selectedLeader]);
+  }
+  if (rivalBox) {
+    rivalBox.innerHTML = photoBoxContentHtml(selectedRival);
+    rivalBox.classList.toggle('clickable', !!selectedRival && !leaderPhotos[selectedRival]);
+  }
+}
+
+// Listeners are attached once (not re-added on every render) and read the
+// live selection/photo state at click time, so tapping the box only
+// triggers the upload while it's still showing the placeholder.
+function wirePhotoBoxUpload(boxId, getName) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  box.addEventListener('click', () => {
+    const name = getName();
+    if (!name || leaderPhotos[name]) return;
+    photoUploadTarget = name;
+    leaderPhotoInput.click();
+  });
+}
+
+wirePhotoBoxUpload('mi-lider-photo-box', () => selectedLeader);
+wirePhotoBoxUpload('rival-photo-box', () => selectedRival);
+
+// Narrows the leader-scoped match list by the history search box (matches
+// the rival's name or color) and the tipo dropdown, without touching the
+// other stats panels - those stay based on the full unfiltered match set.
+function renderHistoryColorFilter() {
+  historyColorFilterEl.innerHTML = '';
+  COLOR_LETTERS.forEach(letter => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'color-chip' + (historyColorFilter.includes(letter) ? ' active' : '');
+    chip.dataset.color = letter;
+    chip.textContent = letter;
+    chip.setAttribute('aria-label', COLOR_NAMES[letter]);
+    chip.addEventListener('click', () => {
+      const idx = historyColorFilter.indexOf(letter);
+      if (idx >= 0) {
+        historyColorFilter.splice(idx, 1);
+      } else {
+        if (historyColorFilter.length >= 2) {
+          showToast('Maximo 2 colores a la vez');
+          return;
+        }
+        historyColorFilter.push(letter);
+      }
+      renderHistoryColorFilter();
+      refreshHistoryOnly();
+    });
+    historyColorFilterEl.appendChild(chip);
+  });
+}
+
+function renderHistoryExactMatch(own) {
+  const el = document.getElementById('history-exact-match');
+  if (!el) return;
+  const q = historyFilterInput ? historyFilterInput.value.trim() : '';
+  if (!q) { el.innerHTML = ''; return; }
+
+  let exact = leaders.find(l => l.toLowerCase() === q.toLowerCase());
+
+  // If not a full match by itself, but colors are already selected above,
+  // see if the typed text plus those colors identify a leader - typing
+  // "Nico Robin" with P+Y selected shouldn't also require typing "PY".
+  if (!exact && historyColorFilter.length) {
+    exact = leaders.find(l => {
+      const colors = leaderColors[l] || [];
+      const sameColors = colors.length === historyColorFilter.length && historyColorFilter.every(c => colors.includes(c));
+      return sameColors && l.toLowerCase().startsWith(q.toLowerCase());
+    });
+  }
+
+  if (!exact) { el.innerHTML = ''; return; }
+
+  const vsMatches = own.filter(m => m.liderRival === exact);
+  if (!vsMatches.length) {
+    el.innerHTML = '<p class="empty">Sin partidas contra ' + escapeHtml(exact) + ' todavia.</p>';
+    return;
+  }
+  const wins = vsMatches.filter(m => m.resultado === 'Victoria').length;
+  const losses = vsMatches.length - wins;
+  const pct = Math.round((wins / vsMatches.length) * 100);
+  el.innerHTML =
+    '<div class="perf-row">' +
+    '<div class="perf-left"><span class="perf-name">vs ' + escapeHtml(exact) + '</span>' + colorBadgesHtml(leaderColors[exact] || []) + '</div>' +
+    '<div class="perf-right"><p class="perf-pct ' + (pct >= 50 ? 'good' : 'bad') + '">' + pct + '%</p><p class="perf-sub">' + wins + 'V - ' + losses + 'D</p></div>' +
+    '</div>';
+}
+
+function filterHistoryEntries(own) {
+  let filtered = own;
+  const tipo = historyFilterTipo ? historyFilterTipo.value : 'Todos';
+  if (tipo && tipo !== 'Todos') {
+    filtered = filtered.filter(m => (m.tipo || 'Casual') === tipo);
+  }
+  if (historyColorFilter.length) {
+    filtered = filtered.filter(m => {
+      const colors = leaderColors[m.liderRival] || [];
+      return historyColorFilter.every(c => colors.includes(c));
+    });
+  }
+  const q = historyFilterInput ? historyFilterInput.value.trim().toLowerCase() : '';
+  if (q) {
+    filtered = filtered.filter(m => m.liderRival.toLowerCase().includes(q));
+  }
+  return filtered;
+}
+
+function refreshHistoryOnly() {
+  if (!selectedLeader) return;
+  const own = matches.filter(m => m.miLider === selectedLeader);
+  renderHistoryExactMatch(own);
+  renderHistory(filterHistoryEntries(own));
+}
+
+function updateStats(leaderName) {
+  const own = matches.filter(m => m.miLider === leaderName);
+  // Training matches count for leader matchup data (colors, rivals, history)
+  // but not for win/loss stats, turno winrates or streaks.
+  const ownForStats = own.filter(m => m.tipo !== 'Entrenamiento');
+  const total = ownForStats.length;
+  const wins = ownForStats.filter(m => m.resultado === 'Victoria').length;
+
+  statTotal.textContent = total;
+  statWinrate.textContent = total ? Math.round((wins / total) * 100) + '%' : '-';
+
+  const primero = ownForStats.filter(m => m.turno === 'Primero');
+  const segundo = ownForStats.filter(m => m.turno === 'Segundo');
+  const primeroRate = primero.length ? primero.filter(m => m.resultado === 'Victoria').length / primero.length : null;
+  const segundoRate = segundo.length ? segundo.filter(m => m.resultado === 'Victoria').length / segundo.length : null;
+
+  statWinrateFirst.textContent = primeroRate === null ? '-' : Math.round(primeroRate * 100) + '%';
+  statWinrateSecond.textContent = segundoRate === null ? '-' : Math.round(segundoRate * 100) + '%';
+  document.getElementById('stat-total-first').textContent = primero.length + ' partida' + (primero.length === 1 ? '' : 's');
+  document.getElementById('stat-total-second').textContent = segundo.length + ' partida' + (segundo.length === 1 ? '' : 's');
+
+  const streakEl = document.getElementById('stat-streak-current');
+  const longestEl = document.getElementById('stat-streak-longest');
+  if (!ownForStats.length) {
+    streakEl.textContent = '-';
+    longestEl.textContent = '-';
+  } else {
+    let curType = ownForStats[ownForStats.length - 1].resultado;
+    let curCount = 0;
+    for (let i = ownForStats.length - 1; i >= 0 && ownForStats[i].resultado === curType; i--) curCount++;
+    streakEl.textContent = curCount + (curType === 'Victoria' ? 'V' : 'D');
+    streakEl.className = 'num ' + (curType === 'Victoria' ? '' : '');
+    streakEl.style.color = curType === 'Victoria' ? 'var(--success)' : 'var(--danger)';
+
+    let longest = 0, running = 0;
+    ownForStats.forEach(m => {
+      running = m.resultado === 'Victoria' ? running + 1 : 0;
+      if (running > longest) longest = running;
+    });
+    longestEl.textContent = longest;
+  }
+
+  if (primeroRate === null && segundoRate === null) {
+    statBestTurnLabel.textContent = 'Mejor turno';
+    statBestTurnValue.textContent = '-';
+  } else if (segundoRate === null || (primeroRate !== null && primeroRate >= segundoRate)) {
+    statBestTurnLabel.textContent = 'Mejor turno: primero';
+    statBestTurnValue.textContent = Math.round(primeroRate * 100) + '%';
+  } else {
+    statBestTurnLabel.textContent = 'Mejor turno: segundo';
+    statBestTurnValue.textContent = Math.round(segundoRate * 100) + '%';
+  }
+
+  statsNote.textContent = total
+    ? 'Estadisticas de ' + leaderName + ' con tus ' + total + ' partida' + (total === 1 ? '' : 's') + ' registrada' + (total === 1 ? '' : 's') + '.'
+    : 'Todavia no hay partidas registradas con ' + leaderName + '.';
+
+  renderColorBreakdown(own);
+  renderLeaderBestWorst(own);
+  renderHistoryExactMatch(own);
+  renderHistory(filterHistoryEntries(own));
+}
+
+function colorBadgesHtml(colorLetters) {
+  if (!colorLetters.length) {
+    return '<span class="color-badge X">X</span>';
+  }
+  return colorLetters.map(c => '<span class="color-badge ' + c + '">' + c + '</span>').join('');
+}
+
+function renderPerfRows(container, buckets, emptyMsg) {
+  const keys = Object.keys(buckets);
+  if (!keys.length) {
+    container.innerHTML = '<p class="empty">' + emptyMsg + '</p>';
+    return;
+  }
+  keys.sort((a, b) => (buckets[b].wins + buckets[b].losses) - (buckets[a].wins + buckets[a].losses));
+
+  container.innerHTML = '';
+  keys.forEach(key => {
+    const b = buckets[key];
+    const total = b.wins + b.losses;
+    const pct = Math.round((b.wins / total) * 100);
+    const row = document.createElement('div');
+    row.className = 'perf-row';
+    row.innerHTML = `
+      <div class="perf-left">
+        <span class="perf-name">${escapeHtml(b.label)}</span>
+        ${b.badges}
+      </div>
+      <div class="perf-right">
+        <p class="perf-pct ${pct >= 50 ? 'good' : 'bad'}">${pct}%</p>
+        <p class="perf-sub">${b.wins}V - ${b.losses}D</p>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function renderColorBreakdown(own) {
+  const buckets = {};
+  own.forEach(m => {
+    const colors = leaderColors[m.liderRival] || [];
+    const keys = colors.length ? colors : ['X'];
+    keys.forEach(letter => {
+      if (!buckets[letter]) {
+        buckets[letter] = {
+          wins: 0,
+          losses: 0,
+          label: letter === 'X' ? 'Desconocido' : COLOR_NAMES[letter],
+          badges: letter === 'X' ? colorBadgesHtml([]) : colorBadgesHtml([letter])
+        };
+      }
+      if (m.resultado === 'Victoria') buckets[letter].wins++; else buckets[letter].losses++;
+    });
+  });
+  renderPerfRows(colorStatsList, buckets, 'Todavia no hay partidas registradas con este lider.');
+}
+
+function renderLeaderBestWorst(own) {
+  const buckets = {};
+  own.forEach(m => {
+    if (!buckets[m.liderRival]) buckets[m.liderRival] = { wins: 0, losses: 0 };
+    if (m.resultado === 'Victoria') buckets[m.liderRival].wins++; else buckets[m.liderRival].losses++;
+  });
+
+  let best = null;
+  let worst = null;
+  Object.keys(buckets).forEach(name => {
+    const b = buckets[name];
+    const diff = b.wins - b.losses;
+    if (b.wins > 0 && (!best || diff > best.diff)) best = { name: name, wins: b.wins, losses: b.losses, diff: diff };
+    if (b.losses > 0 && (!worst || diff < worst.diff)) worst = { name: name, wins: b.wins, losses: b.losses, diff: diff };
+  });
+
+  rivalStatsList.innerHTML = '';
+  if (best) {
+    const pct = Math.round((best.wins / (best.wins + best.losses)) * 100);
+    const row = document.createElement('div');
+    row.className = 'perf-row';
+    row.innerHTML =
+      '<div class="perf-left"><span class="perf-name">Mejor rival: ' + escapeHtml(best.name) + '</span>' + colorBadgesHtml(leaderColors[best.name] || []) + '</div>' +
+      '<div class="perf-right"><p class="perf-pct good">' + pct + '%</p><p class="perf-sub">' + best.wins + 'V - ' + best.losses + 'D</p></div>';
+    rivalStatsList.appendChild(row);
+  }
+  if (worst) {
+    const pct = Math.round((worst.wins / (worst.wins + worst.losses)) * 100);
+    const row = document.createElement('div');
+    row.className = 'perf-row';
+    row.innerHTML =
+      '<div class="perf-left"><span class="perf-name">Peor rival: ' + escapeHtml(worst.name) + '</span>' + colorBadgesHtml(leaderColors[worst.name] || []) + '</div>' +
+      '<div class="perf-right"><p class="perf-pct bad">' + pct + '%</p><p class="perf-sub">' + worst.wins + 'V - ' + worst.losses + 'D</p></div>';
+    rivalStatsList.appendChild(row);
+  }
+  if (!best && !worst) {
+    rivalStatsList.innerHTML = '<p class="empty">Todavia no hay partidas registradas con este lider.</p>';
+  }
+}
+
+// Builds the text a leader is searchable by: its name plus its color
+// names, so typing "law" or "rojo" both find the right options.
+function leaderSearchText(name) {
+  const colors = leaderColors[name] || [];
+  const colorNames = colors.map(c => COLOR_NAMES[c] || '').join(' ');
+  return (name + ' ' + colorNames).toLowerCase();
+}
+
+// Adds a brand new leader name to the shared list (used by every combo's
+// "add new" row), auto-detecting its color, then refreshes every leader
+// picker in the app so the new name shows up everywhere at once.
+function registerNewLeader(name) {
+  if (!leaders.includes(name)) {
+    leaders.push(name);
+    saveLeaders();
+    leaderColors[name] = autoDetectColors(name);
+    saveLeaderColors();
+  }
+  renderMiLiderSelect();
+  renderRivalSelect();
+  if (currentDeck) renderDeckLiderSelect();
+  if (torneoDraft) renderTorneoLeaderSelect();
+}
+
+// A small combobox: typing filters a live dropdown of matching leaders
+// (by name or color); clicking a row selects it; if nothing matches the
+// typed text, the dropdown offers to register it as a brand new leader
+// instead of silently guessing. Drives a hidden native <select> underneath
+// so all the existing change-driven app logic keeps working untouched.
+function createLeaderCombo(input, dropdown, selectEl) {
+  let highlight = 0;
+  document.body.appendChild(dropdown);
+
+  function matchesFor(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) return leaders.slice();
+    return leaders.filter(name => leaderSearchText(name).includes(q));
+  }
+
+  function setSelectValue(name) {
+    if (!Array.from(selectEl.options).some(o => o.value === name)) {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      selectEl.appendChild(opt);
+    }
+    selectEl.value = name;
+    selectEl.dispatchEvent(new Event('change'));
+    input.value = name;
+  }
+
+  function close() {
+    dropdown.classList.remove('show');
+    highlight = 0;
+  }
+
+  function reposition() {
+    const rect = input.getBoundingClientRect();
+    dropdown.style.position = 'fixed';
+    dropdown.style.left = rect.left + 'px';
+    dropdown.style.top = (rect.bottom + 2) + 'px';
+    dropdown.style.width = rect.width + 'px';
+  }
+
+  function render() {
+    reposition();
+    const query = input.value;
+    const matches = matchesFor(query);
+    dropdown.innerHTML = '';
+
+    if (matches.length) {
+      matches.forEach((name, i) => {
+        const row = document.createElement('div');
+        row.className = 'combo-row' + (i === highlight ? ' highlight' : '');
+        row.textContent = name;
+        row.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          setSelectValue(name);
+          close();
+        });
+        dropdown.appendChild(row);
+      });
+    } else if (query.trim()) {
+      const row = document.createElement('div');
+      row.className = 'combo-row combo-add';
+      row.textContent = '+ Anadir "' + query.trim() + '" como nuevo lider';
+      row.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const newName = query.trim();
+        registerNewLeader(newName);
+        setSelectValue(newName);
+        close();
+      });
+      dropdown.appendChild(row);
+    } else {
+      dropdown.innerHTML = '<div class="combo-empty">Sin lideres todavia</div>';
+    }
+    dropdown.classList.add('show');
+  }
+
+  input.addEventListener('focus', () => {
+    highlight = 0;
+    render();
+  });
+  input.addEventListener('input', () => {
+    highlight = 0;
+    render();
+  });
+  input.addEventListener('keydown', (e) => {
+    const matches = matchesFor(input.value);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      highlight = Math.min(highlight + 1, Math.max(matches.length - 1, 0));
+      render();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      highlight = Math.max(highlight - 1, 0);
+      render();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (matches.length) {
+        setSelectValue(matches[highlight]);
+        close();
+      } else if (input.value.trim()) {
+        const newName = input.value.trim();
+        registerNewLeader(newName);
+        setSelectValue(newName);
+        close();
+      }
+    } else if (e.key === 'Escape') {
+      close();
+      input.value = selectEl.value || '';
+    }
+  });
+  input.addEventListener('blur', () => {
+    // Delay so a row's mousedown can register before the dropdown closes.
+    setTimeout(() => {
+      close();
+      if (input.value !== selectEl.value) input.value = selectEl.value || '';
+    }, 120);
+  });
+  window.addEventListener('scroll', (e) => {
+    if (dropdown.contains(e.target) || e.target === dropdown) return;
+    close();
+  }, true);
+}
+
+function renderMiLiderSelect() {
+  miLiderSelect.innerHTML = '';
+  leaders.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    opt.dataset.search = leaderSearchText(name);
+    miLiderSelect.appendChild(opt);
+  });
+  const addOpt = document.createElement('option');
+  addOpt.value = ADD_OPTION;
+  addOpt.textContent = '+ Anadir nuevo lider...';
+  miLiderSelect.appendChild(addOpt);
+  miLiderSelect.value = selectedLeader;
+  if (miLiderSearch) miLiderSearch.value = miLiderSelect.value || '';
+}
+
+function renderRivalSelect() {
+  rivalSelect.innerHTML = '';
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = '-- Elige lider rival --';
+  rivalSelect.appendChild(placeholder);
+  leaders.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    opt.dataset.search = leaderSearchText(name);
+    rivalSelect.appendChild(opt);
+  });
+  const addOpt = document.createElement('option');
+  addOpt.value = ADD_OPTION;
+  addOpt.textContent = '+ Anadir nuevo lider...';
+  rivalSelect.appendChild(addOpt);
+  rivalSelect.value = selectedRival;
+  if (rivalSearch) rivalSearch.value = rivalSelect.value || '';
+}
+
+// Everything loads synchronously from the device on startup - no waiting,
+// no network round trip, so every button is interactive immediately.
+decks = loadDecks();
+leaderPhotos = loadLeaderPhotos();
+leaders = loadLeaders();
+matches = loadMatches();
+leaderColors = loadLeaderColors();
+ensureColorsForLeaders();
+
+// Default "mi lider" to whichever leader was used in the most recent
+// saved match, falling back to the first leader in the list.
+if (matches.length && leaders.includes(matches[matches.length - 1].miLider)) {
+  selectedLeader = matches[matches.length - 1].miLider;
+} else {
+  selectedLeader = leaders[0];
+}
+
+renderMiLiderSelect();
+renderRivalSelect();
+updateStats(selectedLeader);
+renderLeaderPreview();
+
+if (!HAS_STORAGE) {
+  showDebug('El navegador esta bloqueando el guardado local (por ejemplo en modo privado). Las partidas no se guardaran entre sesiones.');
+}
+
+function showDebug(msg) {
+  debugBanner.textContent = msg;
+  debugBanner.style.display = 'block';
+}
+
+// --- Floating modal, shared by both "mi lider" and "lider rival" ---
+function openModal(target) {
+  modalTarget = target;
+  modalTitle.textContent = target === 'mine' ? 'Anadir mi lider' : target === 'rival' ? 'Anadir lider rival' : 'Anadir lider';
+  modalInput.value = '';
+  modalError.style.display = 'none';
+  modalOverlay.classList.add('show');
+  setTimeout(() => modalInput.focus(), 50);
+}
+
+function closeModal() {
+  modalOverlay.classList.remove('show');
+  modalTarget = null;
+}
+
+function confirmModal() {
+  const name = modalInput.value.trim();
+  if (!name) {
+    modalError.style.display = 'block';
+    return;
+  }
+  if (!leaders.includes(name)) {
+    leaders.push(name);
+    saveLeaders();
+    leaderColors[name] = autoDetectColors(name);
+    saveLeaderColors();
+  }
+  if (modalTarget === 'mine') {
+    selectedLeader = name;
+    updateStats(selectedLeader);
+    renderLeaderPreview();
+    syncMazosToLeader(selectedLeader);
+  } else if (modalTarget === 'rival') {
+    selectedRival = name;
+    formError.style.display = 'none';
+    renderLeaderPreview();
+  } else if (modalTarget === 'torneo') {
+    torneoDraft.leader = name;
+  }
+  // All leader pickers share the same leader list, so refresh all of them
+  // regardless of which one triggered the "add" flow.
+  renderMiLiderSelect();
+  renderRivalSelect();
+  if (currentDeck) renderDeckLiderSelect();
+  if (torneoDraft) renderTorneoLeaderSelect();
+  closeModal();
+}
+
+modalConfirm.addEventListener('click', confirmModal);
+modalCancel.addEventListener('click', closeModal);
+modalInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') confirmModal();
+});
+modalOverlay.addEventListener('click', (e) => {
+  if (e.target === modalOverlay) closeModal();
+});
+
+// The single source of truth for "which leader" the whole app is showing:
+// updates Registro's stats/preview and makes the Mazos column follow along
+// (loading that leader's saved deck, or starting a blank one for it).
+function selectMiLider(name) {
+  selectedLeader = name;
+  miLiderSelect.value = name;
+  if (miLiderSearch) miLiderSearch.value = name;
+  updateStats(selectedLeader);
+  renderLeaderPreview();
+  syncMazosToLeader(selectedLeader);
+}
+
+miLiderSelect.addEventListener('change', (e) => {
+  const val = e.target.value;
+  if (val === ADD_OPTION) {
+    e.target.value = selectedLeader;
+    openModal('mine');
+    return;
+  }
+  selectMiLider(val);
+});
+
+rivalSelect.addEventListener('change', (e) => {
+  const val = e.target.value;
+  if (val === ADD_OPTION) {
+    e.target.value = selectedRival;
+    openModal('rival');
+    return;
+  }
+  selectedRival = val;
+  formError.style.display = 'none';
+  renderLeaderPreview();
+});
+
+// --- Menu aparte: gestion de colores por lider ---
+function renderColorsList() {
+  colorsList.innerHTML = '';
+  leaders.forEach(name => {
+    const current = leaderColors[name] || [];
+    const row = document.createElement('div');
+    row.className = 'color-row';
+
+    const label = document.createElement('span');
+    label.className = 'color-row-name';
+    label.textContent = name;
+    row.appendChild(label);
+
+    const chips = document.createElement('div');
+    chips.className = 'color-row-chips';
+    COLOR_LETTERS.forEach(letter => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'color-chip' + (current.includes(letter) ? ' active' : '');
+      chip.dataset.color = letter;
+      chip.textContent = letter;
+      chip.setAttribute('aria-label', COLOR_NAMES[letter]);
+      chip.addEventListener('click', () => toggleLeaderColor(name, letter));
+      chips.appendChild(chip);
+    });
+    row.appendChild(chips);
+    colorsList.appendChild(row);
+  });
+}
+
+function toggleLeaderColor(name, letter) {
+  const current = leaderColors[name] ? leaderColors[name].slice() : [];
+  const idx = current.indexOf(letter);
+  if (idx >= 0) {
+    current.splice(idx, 1);
+  } else {
+    if (current.length >= 2) {
+      showToast('Maximo 2 colores por lider');
+      return;
+    }
+    current.push(letter);
+  }
+  leaderColors[name] = current;
+  saveLeaderColors();
+  renderColorsList();
+  renderMiLiderSelect();
+  renderRivalSelect();
+  if (currentDeck) renderDeckLiderSelect();
+  if (torneoDraft) renderTorneoLeaderSelect();
+}
+
+manageColorsBtn.addEventListener('click', () => {
+  renderColorsList();
+  colorsOverlay.classList.add('show');
+});
+
+colorsClose.addEventListener('click', () => {
+  colorsOverlay.classList.remove('show');
+});
+
+colorsOverlay.addEventListener('click', (e) => {
+  if (e.target === colorsOverlay) colorsOverlay.classList.remove('show');
+});
+
+document.querySelectorAll('.btn[data-group], .btn-win[data-group], .btn-lose[data-group]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const group = btn.dataset.group;
+    const value = btn.dataset.value;
+    selections[group] = value;
+    document.querySelectorAll('[data-group="' + group + '"]').forEach(b => {
+      b.classList.toggle('selected', b === btn);
+    });
+    formError.style.display = 'none';
+  });
+});
+
+function renderHistory(own) {
+  if (!own.length) {
+    historyList.innerHTML = '<p class="empty">Todavia no hay partidas registradas con este lider.</p>';
+    return;
+  }
+  historyList.innerHTML = '';
+  const manoIcon = { Buena: '\uD83D\uDC4D', Mala: '\uD83D\uDC4E', Regular: '\u270B' };
+  const tipoLetter = { Casual: 'C', Ranked: 'R', Torneo: 'T', Entrenamiento: 'E' };
+  own.slice().reverse().forEach(m => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const isWin = m.resultado === 'Victoria';
+    let badges = '';
+    if (m.turno === 'Primero' || m.turno === 'Segundo') {
+      badges += '<span class="hbadge" title="' + m.turno + '">' + (m.turno === 'Primero' ? '1' : '2') + '</span>';
+    }
+    if (manoIcon[m.mano]) {
+      badges += '<span class="hbadge" title="Mano ' + m.mano.toLowerCase() + '">' + manoIcon[m.mano] + '</span>';
+    }
+    if (tipoLetter[m.tipo]) {
+      badges += '<span class="hbadge" title="' + m.tipo + '">' + tipoLetter[m.tipo] + '</span>';
+    }
+    item.innerHTML = `
+      <div class="history-left">
+        <span class="history-main">vs ${escapeHtml(m.liderRival)}</span>
+        <span class="history-date">${m.fecha}</span>
+      </div>
+      <div class="history-badges">${badges}</div>
+      <span class="result-box ${isWin ? 'win' : 'lose'}">${isWin ? 'V' : 'D'}</span>
+    `;
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'del-btn';
+    delBtn.setAttribute('aria-label', 'Eliminar partida');
+    delBtn.textContent = '\u00d7';
+    delBtn.addEventListener('click', () => deleteMatch(m.id));
+    item.appendChild(delBtn);
+    historyList.appendChild(item);
+  });
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function deleteMatch(id) {
+  matches = matches.filter(m => m.id !== id);
+  saveMatches();
+  updateStats(selectedLeader);
+}
+
+document.getElementById('save-btn').addEventListener('click', () => {
+  const liderRival = selectedRival;
+  if (!selectedLeader || !liderRival || !selections.turno || !selections.mano || !selections.resultado || !selections.tipo) {
+    formError.style.display = 'block';
+    return;
+  }
+  formError.style.display = 'none';
+
+  const today = new Date();
+  const fecha = today.toISOString().slice(0, 10);
+
+  const match = {
+    id: Date.now().toString(),
+    miLider: selectedLeader,
+    liderRival: liderRival,
+    turno: selections.turno,
+    mano: selections.mano,
+    resultado: selections.resultado,
+    tipo: selections.tipo,
+    fecha: fecha
+  };
+
+  matches.push(match);
+  saveMatches();
+  showToast('Partida guardada');
+
+  selectedRival = '';
+  renderRivalSelect();
+  selections.turno = null;
+  selections.mano = null;
+  selections.resultado = null;
+  selections.tipo = null;
+  document.querySelectorAll('.selected[data-group]').forEach(b => b.classList.remove('selected'));
+  updateStats(selectedLeader);
+});
+
+// --- Exportar / Importar ---
+const exportBtn = document.getElementById('export-btn');
+const importBtn = document.getElementById('import-btn');
+const importFile = document.getElementById('import-file');
+const exportDecksBtn = document.getElementById('export-decks-btn');
+const importDecksBtn = document.getElementById('import-decks-btn');
+const importDecksFile = document.getElementById('import-decks-file');
+
+exportBtn.addEventListener('click', () => {
+  if (!matches.length) {
+    showToast('Todavia no hay partidas que exportar');
+    return;
+  }
+  const backup = {
+    exportedAt: new Date().toISOString(),
+    leaders: leaders,
+    leaderColors: leaderColors,
+    matches: matches
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = 'op-tcg-partidas-' + stamp + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast('Descargando log de partidas');
+});
+
+importBtn.addEventListener('click', () => importFile.click());
+
+function isValidMatch(m) {
+  const isTorneo = m && m.tipo === 'Torneo';
+  return m && typeof m === 'object'
+    && typeof m.miLider === 'string' && m.miLider
+    && typeof m.liderRival === 'string' && m.liderRival
+    && (isTorneo ? (m.turno === '' || m.turno == null) : (m.turno === 'Primero' || m.turno === 'Segundo'))
+    && (isTorneo ? (m.mano === '' || m.mano == null) : (m.mano === 'Buena' || m.mano === 'Regular' || m.mano === 'Mala'))
+    && (m.resultado === 'Victoria' || m.resultado === 'Derrota');
+}
+
+importFile.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      const incoming = Array.isArray(data) ? data : (Array.isArray(data.matches) ? data.matches : null);
+      if (!incoming) throw new Error('formato inesperado');
+
+      const existingIds = new Set(matches.map(m => m.id));
+      let added = 0;
+      let skipped = 0;
+      let duplicated = 0;
+
+      incoming.forEach(m => {
+        if (!isValidMatch(m)) { skipped++; return; }
+        let id;
+        if (m.id) {
+          if (existingIds.has(String(m.id))) { duplicated++; return; }
+          id = String(m.id);
+        } else {
+          id = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+        }
+        matches.push({
+          id: id,
+          miLider: m.miLider,
+          liderRival: m.liderRival,
+          turno: m.turno || '',
+          mano: m.mano || '',
+          resultado: m.resultado,
+          tipo: m.tipo || 'Casual',
+          torneoId: m.torneoId,
+          fecha: typeof m.fecha === 'string' ? m.fecha : new Date().toISOString().slice(0, 10)
+        });
+        existingIds.add(id);
+        added++;
+
+        // Register any leader used in this match that isn't in the shared
+        // list yet, regardless of whether the file also included "leaders".
+        if (!leaders.includes(m.miLider)) leaders.push(m.miLider);
+        if (!leaders.includes(m.liderRival)) leaders.push(m.liderRival);
+      });
+
+      matches.sort((a, b) => (a.id > b.id ? 1 : -1));
+
+      if (!Array.isArray(data)) {
+        // Accept both the current "leaders" field and the legacy
+        // "rivalLeaders" field from older exports of this app.
+        const extraLists = [data.leaders, data.rivalLeaders];
+        extraLists.forEach(list => {
+          if (Array.isArray(list)) {
+            list.forEach(name => {
+              if (typeof name === 'string' && name && !leaders.includes(name)) leaders.push(name);
+            });
+          }
+        });
+
+        // Bring in any manually-assigned colors from the file (only for
+        // leaders that don't already have a saved assignment locally).
+        if (data.leaderColors && typeof data.leaderColors === 'object') {
+          Object.keys(data.leaderColors).forEach(name => {
+            if (!(name in leaderColors) && Array.isArray(data.leaderColors[name])) {
+              leaderColors[name] = data.leaderColors[name].filter(c => COLOR_LETTERS.includes(c));
+            }
+          });
+        }
+      }
+
+      // Any leader that came in without a color (older export, or plain
+      // array of matches) gets auto-detected now.
+      ensureColorsForLeaders();
+      saveLeaderColors();
+
+      saveMatches();
+      saveLeaders();
+      renderMiLiderSelect();
+      renderRivalSelect();
+      if (currentDeck) renderDeckLiderSelect();
+      updateStats(selectedLeader);
+
+      showToast(
+        added + ' partida' + (added === 1 ? '' : 's') + ' importada' + (added === 1 ? '' : 's') +
+        (duplicated ? ', ' + duplicated + ' repetida' + (duplicated === 1 ? '' : 's') + ' (ya las tenias)' : '') +
+        (skipped ? ', ' + skipped + ' con datos invalidos' : '')
+      );
+    } catch (err) {
+      showToast('El archivo no es un JSON valido');
+    }
+    importFile.value = '';
+  };
+  reader.readAsText(file);
+});
+
+// --- Exportar / Importar mazos (archivo separado del historial) ---
+exportDecksBtn.addEventListener('click', () => {
+  if (!decks.length) {
+    showToast('Todavia no hay mazos que exportar');
+    return;
+  }
+  const usedLeaders = [...new Set(decks.map(d => d.leader).filter(Boolean))];
+  const exportedColors = {};
+  const exportedPhotos = {};
+  usedLeaders.forEach(name => {
+    if (leaderColors[name]) exportedColors[name] = leaderColors[name];
+    if (leaderPhotos[name]) exportedPhotos[name] = leaderPhotos[name];
+  });
+
+  const backup = {
+    exportedAt: new Date().toISOString(),
+    decks: decks,
+    leaderColors: exportedColors,
+    leaderPhotos: exportedPhotos
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = 'op-tcg-mazos-' + stamp + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast('Descargando mazos');
+});
+
+importDecksBtn.addEventListener('click', () => importDecksFile.click());
+
+function isValidDeckForImport(d) {
+  return d && typeof d === 'object'
+    && typeof d.leader === 'string' && d.leader.trim()
+    && Array.isArray(d.cards);
+}
+
+importDecksFile.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      const incoming = Array.isArray(data) ? data : (Array.isArray(data.decks) ? data.decks : null);
+      if (!incoming) throw new Error('formato inesperado');
+
+      const existingIds = new Set(decks.map(d => d.id));
+      let added = 0;
+      let duplicated = 0;
+      let noLeader = 0;
+
+      incoming.forEach(d => {
+        if (!isValidDeckForImport(d)) {
+          noLeader++;
+          return;
+        }
+        const leaderName = d.leader.trim();
+        let id;
+        if (d.id) {
+          if (existingIds.has(String(d.id))) { duplicated++; return; }
+          id = String(d.id);
+        } else {
+          id = newDeckId();
+        }
+        const cleanCards = d.cards
+          .filter(c => c && typeof c.code === 'string' && c.code && Number.isFinite(c.qty) && c.qty > 0)
+          .map(c => ({ code: String(c.code).toUpperCase(), qty: c.qty }));
+
+        decks.push({
+          id: id,
+          name: typeof d.name === 'string' ? d.name : '',
+          leader: leaderName,
+          cards: cleanCards
+        });
+        existingIds.add(id);
+        added++;
+
+        if (!leaders.includes(leaderName)) leaders.push(leaderName);
+      });
+
+      // Bring in any leader colors/photos included in the file, only for
+      // leaders that don't already have a local assignment.
+      if (!Array.isArray(data) && data.leaderColors && typeof data.leaderColors === 'object') {
+        Object.keys(data.leaderColors).forEach(name => {
+          if (!(name in leaderColors) && Array.isArray(data.leaderColors[name])) {
+            leaderColors[name] = data.leaderColors[name].filter(c => COLOR_LETTERS.includes(c));
+          }
+        });
+      }
+      if (!Array.isArray(data) && data.leaderPhotos && typeof data.leaderPhotos === 'object') {
+        Object.keys(data.leaderPhotos).forEach(name => {
+          if (!(name in leaderPhotos) && typeof data.leaderPhotos[name] === 'string') {
+            leaderPhotos[name] = data.leaderPhotos[name];
+          }
+        });
+      }
+
+      ensureColorsForLeaders();
+      saveLeaderColors();
+      saveLeaderPhotos();
+      saveDecks();
+      saveLeaders();
+      renderMiLiderSelect();
+      renderRivalSelect();
+      renderDeckChips();
+      renderLeaderPreview();
+
+      showToast(
+        added + ' mazo' + (added === 1 ? '' : 's') + ' importado' + (added === 1 ? '' : 's') +
+        (duplicated ? ', ' + duplicated + ' repetido' + (duplicated === 1 ? '' : 's') : '') +
+        (noLeader ? ', ' + noLeader + ' mazo' + (noLeader === 1 ? '' : 's') + ' sin lider no se pudo' + (noLeader === 1 ? '' : 'ieron') + ' importar' : '')
+      );
+    } catch (err) {
+      showToast('El archivo no es un JSON valido');
+    }
+    importDecksFile.value = '';
+  };
+  reader.readAsText(file);
+});
+
+// --- Pagina "Mazos" ---
+function switchPage(page) {
+  document.querySelectorAll('.tab-registro').forEach(el => {
+    el.style.display = page === 'registro' ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab-mazos').forEach(el => {
+    el.style.display = page === 'mazos' ? 'block' : 'none';
+  });
+  tabRegistro.classList.toggle('active', page === 'registro');
+  tabMazos.classList.toggle('active', page === 'mazos');
+  if (page === 'registro') renderLeaderPreview();
+}
+
+tabRegistro.addEventListener('click', () => switchPage('registro'));
+tabMazos.addEventListener('click', () => switchPage('mazos'));
+
+// --- Torneos: ventana flotante en vez de pestana/columna fija ---
+const openTorneosBtn = document.getElementById('open-torneos-btn');
+const torneosOverlay = document.getElementById('torneos-overlay');
+const torneosCloseBtn = document.getElementById('torneos-close');
+
+openTorneosBtn.addEventListener('click', () => {
+  torneosOverlay.classList.add('show');
+  renderTorneoHistory();
+});
+torneosCloseBtn.addEventListener('click', () => torneosOverlay.classList.remove('show'));
+torneosOverlay.addEventListener('click', (e) => {
+  if (e.target === torneosOverlay) torneosOverlay.classList.remove('show');
+});
+
+function newDeckId() {
+  return 'deck-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+}
+
+function newDeckDraft() {
+  return { id: newDeckId(), name: '', leader: selectedLeader || leaders[0] || '', cards: [] };
+}
+
+function renderDeckChips() {
+  // The deck-switcher bar was removed - which deck loads is driven entirely
+  // by the leader selected in Registro now. Kept as a no-op so existing
+  // call sites elsewhere don't need to be hunted down individually.
+}
+
+function renderDeckLiderSelect() {
+  deckLeaderDisplay.textContent = currentDeck.leader || '-';
+}
+
+function renderDeckColorChips() {
+  const el = document.getElementById('deck-color-chips');
+  el.innerHTML = '';
+  const current = leaderColors[currentDeck.leader] || [];
+  COLOR_LETTERS.forEach(letter => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'color-chip' + (current.includes(letter) ? ' active' : '');
+    chip.dataset.color = letter;
+    chip.textContent = letter;
+    chip.setAttribute('aria-label', COLOR_NAMES[letter]);
+    chip.addEventListener('click', () => {
+      toggleLeaderColor(currentDeck.leader, letter);
+      renderDeckColorChips();
+    });
+    el.appendChild(chip);
+  });
+}
+
+const leaderPhotoInput = document.getElementById('leader-photo-input');
+
+// Resizes/compresses an uploaded image client-side before storing it, so a
+// full-resolution phone photo doesn't blow up localStorage's quota.
+function readAndResizeImage(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('No se pudo procesar la imagen'));
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round(height * (maxDim / width));
+            width = maxDim;
+          } else {
+            width = Math.round(width * (maxDim / height));
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Self-contained "no photo" placeholder - drawn inline, no network request,
+// so it can never fail to load regardless of any external site's policies.
+function placeholderImageSvg() {
+  return '<svg viewBox="0 0 100 100" width="62%" height="62%" xmlns="http://www.w3.org/2000/svg">' +
+    // crossbones
+    '<g stroke="var(--text-muted)" stroke-width="4" stroke-linecap="round">' +
+    '<line x1="20" y1="62" x2="80" y2="84"/>' +
+    '<line x1="80" y1="62" x2="20" y2="84"/>' +
+    '</g>' +
+    '<circle cx="20" cy="62" r="3" fill="var(--text-muted)"/>' +
+    '<circle cx="80" cy="62" r="3" fill="var(--text-muted)"/>' +
+    '<circle cx="20" cy="84" r="3" fill="var(--text-muted)"/>' +
+    '<circle cx="80" cy="84" r="3" fill="var(--text-muted)"/>' +
+    // skull
+    '<circle cx="50" cy="48" r="22" fill="var(--bg)" stroke="var(--text-muted)" stroke-width="4"/>' +
+    '<circle cx="41" cy="46" r="4" fill="var(--text-muted)"/>' +
+    '<circle cx="59" cy="46" r="4" fill="var(--text-muted)"/>' +
+    '<path d="M44 60 L47 64 L50 60 L53 64 L56 60" fill="none" stroke="var(--text-muted)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' +
+    // straw hat
+    '<ellipse cx="50" cy="30" rx="30" ry="7" fill="none" stroke="var(--text-muted)" stroke-width="4"/>' +
+    '<path d="M35 30 Q35 12 50 12 Q65 12 65 30" fill="var(--bg)" stroke="var(--text-muted)" stroke-width="4"/>' +
+    '<rect x="35" y="24" width="30" height="6" fill="var(--accent)"/>' +
+    '</svg>';
+}
+
+let photoUploadTarget = null;
+
+function renderLeaderPhoto() {
+  const box = document.getElementById('leader-photo-box');
+  box.innerHTML = '';
+  const photo = leaderPhotos[currentDeck.leader];
+
+  if (photo) {
+    const wrap = document.createElement('div');
+    wrap.style.textAlign = 'center';
+
+    const img = document.createElement('img');
+    img.className = 'leader-photo';
+    img.src = photo;
+    wrap.appendChild(img);
+
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex; gap:8px; justify-content:center; margin-top:8px;';
+
+    const changeBtn = document.createElement('button');
+    changeBtn.type = 'button';
+    changeBtn.className = 'modal-btn';
+    changeBtn.textContent = 'Cambiar';
+    changeBtn.addEventListener('click', () => {
+      photoUploadTarget = currentDeck.leader;
+      leaderPhotoInput.click();
+    });
+    btnRow.appendChild(changeBtn);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'modal-btn';
+    removeBtn.textContent = 'Quitar';
+    removeBtn.addEventListener('click', () => {
+      delete leaderPhotos[currentDeck.leader];
+      saveLeaderPhotos();
+      renderLeaderPhoto();
+      renderLeaderPreview();
+    });
+    btnRow.appendChild(removeBtn);
+
+    wrap.appendChild(btnRow);
+    box.appendChild(wrap);
+  } else {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'deck-photo-row';
+    btn.style.justifyContent = 'center';
+    btn.textContent = 'Toca para subir la foto del lider';
+    btn.addEventListener('click', () => {
+      photoUploadTarget = currentDeck.leader;
+      leaderPhotoInput.click();
+    });
+    box.appendChild(btn);
+  }
+}
+
+leaderPhotoInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  leaderPhotoInput.value = '';
+  if (!file || !photoUploadTarget) return;
+  try {
+    leaderPhotos[photoUploadTarget] = await readAndResizeImage(file, 520, 0.82);
+    saveLeaderPhotos();
+    renderLeaderPhoto();
+    renderLeaderPreview();
+    showToast('Foto cargada');
+  } catch (err) {
+    showToast('No se pudo cargar la imagen');
+  } finally {
+    photoUploadTarget = null;
+  }
+});
+
+function renderDeckCardsList() {
+  const total = deckTotalCards();
+  deckCardCount.textContent = total + '/' + MAX_DECK_SIZE + ' cartas';
+
+  if (!currentDeck.cards.length) {
+    deckCardsList.innerHTML = '<p class="empty">Todavia no has anadido cartas.</p>';
+    return;
+  }
+  deckCardsList.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'card-grid';
+
+  currentDeck.cards.forEach((c, index) => {
+    const isLeader = index === 0;
+    const cell = document.createElement('div');
+    cell.className = 'card-cell' + (isLeader ? ' leader' : '');
+
+    const codeSpan = document.createElement('span');
+    codeSpan.className = 'cell-code';
+    codeSpan.textContent = c.code;
+    cell.appendChild(codeSpan);
+
+    const qtySpan = document.createElement('span');
+    qtySpan.className = 'cell-qty';
+    qtySpan.textContent = 'x' + c.qty;
+    cell.appendChild(qtySpan);
+
+    if (isLeader) {
+      const tag = document.createElement('span');
+      tag.className = 'cell-leader-tag';
+      tag.textContent = 'LIDER';
+      cell.appendChild(tag);
+    } else {
+      const controls = document.createElement('div');
+      controls.className = 'cell-controls';
+
+      const decBtn = document.createElement('button');
+      decBtn.type = 'button';
+      decBtn.className = 'qty-btn';
+      decBtn.textContent = '\u2212';
+      decBtn.setAttribute('aria-label', 'Quitar una copia');
+      decBtn.addEventListener('click', () => changeCardQty(c.code, -1));
+      controls.appendChild(decBtn);
+
+      const incBtn = document.createElement('button');
+      incBtn.type = 'button';
+      incBtn.className = 'qty-btn';
+      incBtn.textContent = '+';
+      incBtn.setAttribute('aria-label', 'Anadir una copia');
+      incBtn.addEventListener('click', () => changeCardQty(c.code, 1));
+      controls.appendChild(incBtn);
+
+      cell.appendChild(controls);
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'cell-del';
+      delBtn.setAttribute('aria-label', 'Quitar carta');
+      delBtn.textContent = '\u00d7';
+      delBtn.addEventListener('click', () => {
+        currentDeck.cards = currentDeck.cards.filter(x => x.code !== c.code);
+        renderDeckCardsList();
+      });
+      cell.appendChild(delBtn);
+    }
+
+    grid.appendChild(cell);
+  });
+
+  deckCardsList.appendChild(grid);
+}
+
+// Adjusts a single card's copies by delta (+1/-1), respecting the per-card
+// cap (4, or 50 for the Impel Down Prisoners exception) and the 51-card
+// deck total. The leader (index 0) is never touched here - it's locked.
+function changeCardQty(code, delta) {
+  const index = currentDeck.cards.findIndex(c => c.code === code);
+  if (index <= 0) return; // not found, or it's the locked leader slot
+  const card = currentDeck.cards[index];
+  const cap = maxCopiesFor(code);
+
+  if (delta > 0) {
+    if (card.qty >= cap) {
+      showToast('Maximo ' + cap + ' copias de esta carta');
+      return;
+    }
+    if (deckTotalCards() >= MAX_DECK_SIZE) {
+      showToast('El mazo ya tiene el maximo de ' + MAX_DECK_SIZE + ' cartas');
+      return;
+    }
+    card.qty++;
+  } else {
+    card.qty--;
+    if (card.qty <= 0) {
+      currentDeck.cards.splice(index, 1);
+    }
+  }
+  renderDeckCardsList();
+}
+
+// One-directional sync: choosing "Mi lider" in Registro drives which deck
+// shows in the Mazos column, so you always see what deck you're playing.
+// It does NOT go the other way - changing "Lider del mazo" inside Mazos
+// never touches the Registro selection.
+function syncMazosToLeader(name) {
+  const existing = decks.find(d => d.leader === name);
+  if (existing) {
+    loadDeckIntoForm(existing);
+  } else {
+    currentDeck = newDeckDraft();
+    currentDeck.leader = name;
+    deckNameInput.value = '';
+    deckError.style.display = 'none';
+    renderDeckLiderSelect();
+    renderDeckColorChips();
+    renderDeckCardsList();
+    renderLeaderPhoto();
+    renderDeckChips();
+  }
+}
+
+function loadDeckIntoForm(d) {
+  currentDeck = JSON.parse(JSON.stringify(d));
+  deckNameInput.value = currentDeck.name || '';
+  deckError.style.display = 'none';
+  renderDeckLiderSelect();
+  renderDeckColorChips();
+  renderDeckCardsList();
+  renderLeaderPhoto();
+  renderDeckChips();
+}
+
+function startNewDeck() {
+  currentDeck = newDeckDraft();
+  deckNameInput.value = '';
+  deckError.style.display = 'none';
+  renderDeckLiderSelect();
+  renderDeckColorChips();
+  renderDeckCardsList();
+  renderLeaderPhoto();
+  renderDeckChips();
+}
+
+// Parses lines like "1xOP01-016" or "2x OP03-002" (case/space tolerant).
+// Repeated codes in the same paste get their quantities summed instead
+// of creating duplicate rows.
+function parseBulkList(text) {
+  const lines = text.split(/\n+/);
+  let added = 0;
+  let skipped = 0;
+  let capped = 0;
+  const isFirstEver = currentDeck.cards.length === 0;
+  let isFirstLineOfThisPaste = true;
+
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    const match = trimmed.match(/^(\d+)\s*[xX]\s*([A-Za-z0-9-]+)$/);
+    let qty = match ? parseInt(match[1], 10) : 0;
+    if (!match || !qty || qty < 1) {
+      skipped++;
+      return;
+    }
+    const code = match[2].toUpperCase();
+    const isLeaderSlot = isFirstEver && isFirstLineOfThisPaste;
+    isFirstLineOfThisPaste = false;
+
+    const existing = currentDeck.cards.find(c => c.code === code);
+    const currentQty = existing ? existing.qty : 0;
+
+    if (isLeaderSlot) {
+      qty = 1;
+    } else {
+      const cap = maxCopiesFor(code);
+      let target = currentQty + qty;
+      if (target > cap) {
+        target = cap;
+        capped++;
+      }
+      qty = target - currentQty;
+      if (qty <= 0) {
+        skipped++;
+        return;
+      }
+    }
+
+    const remaining = MAX_DECK_SIZE - deckTotalCards();
+    if (remaining <= 0) {
+      skipped++;
+      return;
+    }
+    if (qty > remaining) {
+      qty = remaining;
+      capped++;
+    }
+
+    if (existing) existing.qty += qty;
+    else currentDeck.cards.push({ code: code, qty: qty });
+    added++;
+  });
+  return { added: added, skipped: skipped, capped: capped };
+}
+
+deckLoadListBtn.addEventListener('click', () => {
+  const text = deckBulkInput.value;
+  if (!text.trim()) {
+    showToast('Pega primero una lista de cartas');
+    return;
+  }
+  const result = parseBulkList(text);
+  deckBulkInput.value = '';
+  renderDeckCardsList();
+  showToast(
+    result.added + ' linea' + (result.added === 1 ? '' : 's') + ' cargada' + (result.added === 1 ? '' : 's') +
+    (result.capped ? ', ' + result.capped + ' ajustada' + (result.capped === 1 ? '' : 's') + ' al limite' : '') +
+    (result.skipped ? ', ' + result.skipped + ' omitida' + (result.skipped === 1 ? '' : 's') : '')
+  );
+});
+
+copyListBtn.addEventListener('click', async () => {
+  if (!currentDeck.cards.length) {
+    showToast('Todavia no hay cartas que copiar');
+    return;
+  }
+  const text = currentDeck.cards.map(c => c.qty + 'x' + c.code).join('\n');
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      throw new Error('no clipboard api');
+    }
+    showToast('Lista copiada');
+  } catch (err) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('Lista copiada');
+    } catch (err2) {
+      showToast('No se pudo copiar la lista');
+    }
+  }
+});
+
+deckPhotoBtn.addEventListener('click', () => {
+  showToast('Fotos de cartas: proximamente');
+});
+
+deckSaveBtn.addEventListener('click', () => {
+  currentDeck.name = deckNameInput.value.trim();
+  if (!currentDeck.leader || !currentDeck.cards.length) {
+    deckError.style.display = 'block';
+    return;
+  }
+  deckError.style.display = 'none';
+
+  const toSave = JSON.parse(JSON.stringify(currentDeck));
+  const idx = decks.findIndex(d => d.id === toSave.id);
+  if (idx >= 0) decks[idx] = toSave; else decks.push(toSave);
+  saveDecks();
+  renderDeckChips();
+  showToast('Mazo guardado');
+});
+
+deckDeleteBtn.addEventListener('click', () => {
+  const idx = decks.findIndex(d => d.id === currentDeck.id);
+  if (idx < 0) {
+    showToast('Este mazo todavia no se ha guardado');
+    return;
+  }
+  const label = currentDeck.name || currentDeck.leader;
+  if (!confirm('Borrar el mazo "' + label + '"? Esta accion no se puede deshacer.')) {
+    return;
+  }
+  decks.splice(idx, 1);
+  saveDecks();
+  startNewDeck();
+  showToast('Mazo borrado');
+});
+
+// --- Pagina "Torneos" ---
+function newTorneoRound() {
+  return { rival: '', resultado: null };
+}
+
+function newTorneoDraft() {
+  return {
+    leader: selectedLeader || leaders[0] || '',
+    rounds: [newTorneoRound(), newTorneoRound(), newTorneoRound(), newTorneoRound()]
+  };
+}
+
+function renderTorneoLeaderSelect() {
+  torneoLeaderSelect.innerHTML = '';
+  leaders.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    opt.dataset.search = leaderSearchText(name);
+    torneoLeaderSelect.appendChild(opt);
+  });
+  const addOpt = document.createElement('option');
+  addOpt.value = ADD_OPTION;
+  addOpt.textContent = '+ Anadir nuevo lider...';
+  torneoLeaderSelect.appendChild(addOpt);
+  torneoLeaderSelect.value = torneoDraft.leader;
+  if (torneoLeaderSearch) torneoLeaderSearch.value = torneoLeaderSelect.value || '';
+}
+
+function torneoTally() {
+  let wins = 0;
+  let losses = 0;
+  torneoDraft.rounds.forEach(r => {
+    if (r.resultado === 'Victoria') wins++;
+    else if (r.resultado === 'Derrota') losses++;
+  });
+  return { wins: wins, losses: losses };
+}
+
+function renderTorneoTally() {
+  const t = torneoTally();
+  torneoTallyEl.innerHTML = '<span style="color:var(--success);">' + t.wins + 'V</span> - <span style="color:var(--danger);">' + t.losses + 'D</span>';
+}
+
+function renderTorneoRounds() {
+  document.querySelectorAll('.round-combo-dropdown').forEach(el => el.remove());
+  torneoRoundsEl.innerHTML = '';
+  torneoDraft.rounds.forEach((round, index) => {
+    const box = document.createElement('div');
+    box.className = 'torneo-round' + (!round.rival || !round.resultado ? ' pending' : '');
+
+    const label = document.createElement('p');
+    label.className = 'torneo-round-label';
+    label.textContent = 'Ronda ' + (index + 1);
+    box.appendChild(label);
+
+    const row = document.createElement('div');
+    row.className = 'torneo-round-row';
+
+    const comboWrap = document.createElement('div');
+    comboWrap.className = 'combo-wrap';
+    comboWrap.style.flex = '1';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'select';
+    input.placeholder = '-- Elige lider rival --';
+    input.autocomplete = 'off';
+    input.style.cssText = 'font-size:13px; padding:7px; width:100%;';
+    input.value = round.rival || '';
+    comboWrap.appendChild(input);
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'combo-dropdown round-combo-dropdown';
+    comboWrap.appendChild(dropdown);
+
+    const select = document.createElement('select');
+    select.style.display = 'none';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '-- Elige lider rival --';
+    select.appendChild(placeholder);
+    leaders.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+    select.value = round.rival;
+    select.addEventListener('change', (e) => {
+      round.rival = e.target.value;
+      renderTorneoRounds();
+    });
+    comboWrap.appendChild(select);
+    createLeaderCombo(input, dropdown, select);
+
+    row.appendChild(comboWrap);
+
+    const winBtn = document.createElement('button');
+    winBtn.type = 'button';
+    winBtn.className = 'vd-btn win' + (round.resultado === 'Victoria' ? ' selected' : '');
+    winBtn.textContent = 'V';
+    winBtn.addEventListener('click', () => {
+      round.resultado = 'Victoria';
+      renderTorneoRounds();
+      renderTorneoTally();
+    });
+    row.appendChild(winBtn);
+
+    const loseBtn = document.createElement('button');
+    loseBtn.type = 'button';
+    loseBtn.className = 'vd-btn lose' + (round.resultado === 'Derrota' ? ' selected' : '');
+    loseBtn.textContent = 'D';
+    loseBtn.addEventListener('click', () => {
+      round.resultado = 'Derrota';
+      renderTorneoRounds();
+      renderTorneoTally();
+    });
+    row.appendChild(loseBtn);
+
+    box.appendChild(row);
+    torneoRoundsEl.appendChild(box);
+  });
+}
+
+function resetTorneoSaveArea() {
+  torneoConfirmPending = false;
+  torneoSaveArea.innerHTML = '<button class="save-btn" id="torneo-save-btn" type="button">Guardar torneo</button>';
+  document.getElementById('torneo-save-btn').addEventListener('click', handleTorneoSaveClick);
+}
+
+torneoLeaderSelect.addEventListener('change', (e) => {
+  const val = e.target.value;
+  if (val === ADD_OPTION) {
+    e.target.value = torneoDraft.leader;
+    openModal('torneo');
+    return;
+  }
+  torneoDraft.leader = val;
+});
+
+torneoAddRoundBtn.addEventListener('click', () => {
+  torneoDraft.rounds.push(newTorneoRound());
+  renderTorneoRounds();
+});
+
+function handleTorneoSaveClick() {
+  const participants = parseInt(torneoParticipantsInput.value, 10);
+  const position = parseInt(torneoPositionInput.value, 10);
+  const roundsComplete = torneoDraft.rounds.every(r => r.rival && r.resultado);
+
+  if (!participants || participants < 1 || !torneoDraft.leader || !roundsComplete || !position || position < 1) {
+    torneoError.style.display = 'block';
+    return;
+  }
+  torneoError.style.display = 'none';
+
+  const t = torneoTally();
+  torneoSaveArea.innerHTML =
+    '<div class="warning-box">' +
+    '<span>Revisa los resultados: ' + t.wins + 'V - ' + t.losses + 'D, puesto ' + position + '. Una vez confirmes no se podra editar.</span>' +
+    '</div>' +
+    '<div class="row2">' +
+    '<button class="modal-btn" id="torneo-review-btn" type="button">Volver a revisar</button>' +
+    '<button class="modal-btn primary" id="torneo-confirm-btn" type="button">Confirmar y guardar</button>' +
+    '</div>';
+  document.getElementById('torneo-review-btn').addEventListener('click', resetTorneoSaveArea);
+  document.getElementById('torneo-confirm-btn').addEventListener('click', confirmTorneoSave);
+}
+
+function confirmTorneoSave() {
+  const participants = parseInt(torneoParticipantsInput.value, 10);
+  const position = parseInt(torneoPositionInput.value, 10);
+  const torneoId = 'torneo-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  const fecha = new Date().toISOString().slice(0, 10);
+
+  tournaments.push({
+    id: torneoId,
+    leader: torneoDraft.leader,
+    participants: participants,
+    position: position,
+    rounds: torneoDraft.rounds.map(r => ({ rival: r.rival, resultado: r.resultado })),
+    fecha: fecha
+  });
+  saveTournaments();
+
+  torneoDraft.rounds.forEach(r => {
+    matches.push({
+      id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 6),
+      miLider: torneoDraft.leader,
+      liderRival: r.rival,
+      turno: '',
+      mano: '',
+      resultado: r.resultado,
+      tipo: 'Torneo',
+      torneoId: torneoId,
+      fecha: fecha
+    });
+  });
+  saveMatches();
+
+  torneoDraft = newTorneoDraft();
+  torneoParticipantsInput.value = '';
+  torneoPositionInput.value = '';
+  renderTorneoLeaderSelect();
+  renderTorneoRounds();
+  renderTorneoTally();
+  resetTorneoSaveArea();
+  renderTorneoHistory();
+  updateStats(selectedLeader);
+  showToast('Torneo guardado');
+}
+
+function renderTorneoHistory() {
+  if (!tournaments.length) {
+    torneoHistoryList.innerHTML = '<p class="empty">Todavia no hay torneos registrados.</p>';
+    return;
+  }
+  torneoHistoryList.innerHTML = '';
+  tournaments.slice().reverse().forEach(t => {
+    const wins = t.rounds.filter(r => r.resultado === 'Victoria').length;
+    const losses = t.rounds.filter(r => r.resultado === 'Derrota').length;
+    const good = wins >= losses;
+    const row = document.createElement('div');
+    row.className = 'perf-row';
+    row.innerHTML =
+      '<div class="perf-left"><span class="perf-name">' + escapeHtml(t.leader) + '</span></div>' +
+      '<div class="perf-right">' +
+      '<p class="perf-pct ' + (good ? 'good' : 'bad') + '">' + wins + '-' + losses + '</p>' +
+      '<p class="perf-sub">' + t.participants + ' participantes - Puesto ' + t.position + '</p>' +
+      '</div>';
+    torneoHistoryList.appendChild(row);
+  });
+}
+
+// Initial setup for the Mazos page - independent of which tab is active
+// at startup, so switching tabs later is instant. (decks/leaderPhotos were
+// already loaded earlier, before the Registro page needed them.)
+currentDeck = newDeckDraft();
+renderDeckChips();
+renderDeckLiderSelect();
+renderDeckColorChips();
+renderDeckCardsList();
+renderLeaderPhoto();
+
+// Now that both pages are ready, load whichever deck matches the leader
+// Registro already had selected (e.g. from your last saved match).
+syncMazosToLeader(selectedLeader);
+
+// Initial setup for the Torneos page.
+tournaments = loadTournaments();
+torneoDraft = newTorneoDraft();
+renderTorneoLeaderSelect();
+renderTorneoRounds();
+renderTorneoTally();
+resetTorneoSaveArea();
+renderTorneoHistory();
+
+// Search boxes that filter the four main leader dropdowns as you type,
+// matching by name or by color.
+createLeaderCombo(miLiderSearch, miLiderDropdown, miLiderSelect);
+createLeaderCombo(rivalSearch, rivalDropdown, rivalSelect);
+createLeaderCombo(torneoLeaderSearch, torneoLeaderDropdown, torneoLeaderSelect);
+
+// History filter: narrows the current leader's match list live as you
+// type or change the tipo dropdown, without recalculating the other panels.
+renderHistoryColorFilter();
+if (historyFilterInput) historyFilterInput.addEventListener('input', refreshHistoryOnly);
+if (historyFilterTipo) historyFilterTipo.addEventListener('change', refreshHistoryOnly);
+</script>
+</body>
+</html>
