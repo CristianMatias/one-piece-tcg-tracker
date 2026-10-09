@@ -29,3 +29,10 @@ servidor ni dependencias externas.
 ## Stack
 
 HTML, CSS y JavaScript vanilla en un único fichero autocontenido.
+
+## Licencia
+
+Este proyecto es software libre, publicado bajo la [GNU General Public
+License v3.0](LICENSE). Cualquiera puede usarlo, copiarlo, modificarlo y
+distribuirlo, siempre que las versiones derivadas se publiquen también
+como código abierto bajo la misma licencia.
