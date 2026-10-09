@@ -17,8 +17,10 @@ Card Game.
   51 cartas.
 - **Modo torneo**: formulario flotante con rondas dinámicas, resultados por
   ronda y posición final, guardado en el historial de partidas.
-- **Datos locales**: todo se guarda en `localStorage` del navegador — no hay
-  backend ni servidor.
+- **Datos locales**: todo se guarda en `IndexedDB`, en el propio navegador —
+  no hay backend ni servidor. Si el navegador tenía datos guardados con la
+  versión anterior (basada en `localStorage`), se migran automáticamente a
+  IndexedDB la primera vez que se abre esta versión, sin perder nada.
 - **Modo claro/oscuro** automático según las preferencias del sistema.
 
 ## Uso
