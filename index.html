@@ -170,6 +170,27 @@
     background: var(--bg);
   }
   .card-cell.leader { border-color: var(--accent); }
+  .cell-photo-box {
+    width: 100%;
+    aspect-ratio: 5/7;
+    border-radius: 5px;
+    overflow: hidden;
+    background: var(--card);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-bottom: 5px;
+    padding: 0;
+  }
+  .cell-photo-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .cell-photo-box svg { width: 55%; height: 55%; }
   .card-cell .cell-code {
     font-size: 10px;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -733,6 +754,7 @@
       <div id="leader-photo-box"></div>
       <input type="file" id="leader-photo-input" accept="image/*" style="display:none;" />
     </div>
+    <input type="file" id="card-photo-input" accept="image/*" style="display:none;" />
 
     <div class="section-gap">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
@@ -944,6 +966,7 @@ const LEADER_COLORS_KEY = 'op_tcg_leader_colors';
 const DECKS_KEY = 'op_tcg_decks';
 const LEADER_PHOTOS_KEY = 'op_tcg_leader_photos';
 const TOURNAMENTS_KEY = 'op_tcg_tournaments';
+const CARD_PHOTOS_KEY = 'op_tcg_card_photos';
 
 // --- IndexedDB storage layer ---
 // All app data (leaders, matches, decks, colors, photos, tournaments) lives
@@ -956,7 +979,8 @@ const DB_STORE = 'kv';
 const DB_VERSION = 1;
 const ALL_STORAGE_KEYS = [
   LEADERS_KEY, LEGACY_RIVAL_LEADERS_KEY, MATCHES_KEY,
-  LEADER_COLORS_KEY, DECKS_KEY, LEADER_PHOTOS_KEY, TOURNAMENTS_KEY
+  LEADER_COLORS_KEY, DECKS_KEY, LEADER_PHOTOS_KEY, TOURNAMENTS_KEY,
+  CARD_PHOTOS_KEY
 ];
 
 let dbPromise = null;
@@ -1073,6 +1097,7 @@ let leaderColors = {};
 let decks = [];
 let currentDeck = null;
 let leaderPhotos = {};
+let cardPhotos = {};
 let tournaments = [];
 let torneoDraft = null;
 let torneoConfirmPending = false;
@@ -1323,6 +1348,28 @@ async function saveLeaderPhotosData(photos) {
 
 function saveLeaderPhotos() {
   return saveLeaderPhotosData(leaderPhotos);
+}
+
+// Card photos are keyed by card code (e.g. "OP01-016") and shared across
+// every deck - uploading a photo for a code makes it appear on any deck
+// that uses that card, same as leader photos are shared by leader name.
+async function loadCardPhotos() {
+  if (!HAS_STORAGE) return {};
+  try {
+    const parsed = await idbGet(CARD_PHOTOS_KEY);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+async function saveCardPhotos() {
+  if (!HAS_STORAGE) return;
+  try {
+    await idbSet(CARD_PHOTOS_KEY, cardPhotos);
+  } catch (e) {
+    showToast('No se pudo guardar la foto en el telefono');
+  }
 }
 
 function showToast(msg) {
@@ -1813,6 +1860,7 @@ if (HAS_STORAGE) await migrateFromLocalStorageIfNeeded();
 
 decks = await loadDecks();
 leaderPhotos = await loadLeaderPhotos();
+cardPhotos = await loadCardPhotos();
 leaders = await loadLeaders();
 matches = await loadMatches();
 leaderColors = await loadLeaderColors();
@@ -2565,6 +2613,64 @@ leaderPhotoInput.addEventListener('change', async (e) => {
   }
 });
 
+// --- Card photos (per card code, shared across every deck) ---
+const cardPhotoInput = document.getElementById('card-photo-input');
+let cardPhotoUploadTarget = null;
+
+// Card codes are expected to start with OP (standard set), ST (starter
+// deck) or P (promo) - e.g. "OP01-016", "ST01-001", "P-001". Anything
+// else is rejected before a photo can be attached to it.
+function isValidCardCodeForPhoto(code) {
+  return /^(OP|ST|P)/i.test(code);
+}
+
+// Generic "card back" placeholder - distinct from the leader's skull
+// placeholder, drawn inline so it never depends on a network request.
+function placeholderCardSvg() {
+  return '<svg viewBox="0 0 70 98" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="4" y="4" width="62" height="90" rx="6" fill="none" stroke="var(--text-muted)" stroke-width="3.5"/>' +
+    '<circle cx="35" cy="49" r="16" fill="none" stroke="var(--text-muted)" stroke-width="3.5"/>' +
+    '<path d="M35 41 L35 57 M27 49 L43 49" stroke="var(--text-muted)" stroke-width="3.5" stroke-linecap="round"/>' +
+    '</svg>';
+}
+
+function cardPhotoBox(code) {
+  const box = document.createElement('button');
+  box.type = 'button';
+  box.className = 'cell-photo-box';
+  box.setAttribute('aria-label', 'Subir foto de ' + code);
+  const photo = cardPhotos[code];
+  box.innerHTML = photo
+    ? '<img src="' + photo + '" alt="' + escapeHtml(code) + '" />'
+    : placeholderCardSvg();
+  box.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!isValidCardCodeForPhoto(code)) {
+      showToast('El codigo debe empezar por OP, ST o P');
+      return;
+    }
+    cardPhotoUploadTarget = code;
+    cardPhotoInput.click();
+  });
+  return box;
+}
+
+cardPhotoInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  cardPhotoInput.value = '';
+  if (!file || !cardPhotoUploadTarget) return;
+  try {
+    cardPhotos[cardPhotoUploadTarget] = await readAndResizeImage(file, 300, 0.8);
+    saveCardPhotos();
+    renderDeckCardsList();
+    showToast('Foto cargada');
+  } catch (err) {
+    showToast('No se pudo cargar la imagen');
+  } finally {
+    cardPhotoUploadTarget = null;
+  }
+});
+
 function renderDeckCardsList() {
   const total = deckTotalCards();
   deckCardCount.textContent = total + '/' + MAX_DECK_SIZE + ' cartas';
@@ -2581,6 +2687,8 @@ function renderDeckCardsList() {
     const isLeader = index === 0;
     const cell = document.createElement('div');
     cell.className = 'card-cell' + (isLeader ? ' leader' : '');
+
+    if (!isLeader) cell.appendChild(cardPhotoBox(c.code));
 
     const codeSpan = document.createElement('span');
     codeSpan.className = 'cell-code';
