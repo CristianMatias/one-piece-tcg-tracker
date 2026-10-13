@@ -1,2 +1,7 @@
 .DS_Store
 *.log
+
+# Backups de datos reales exportados desde la app (partidas/mazos con
+# nombres, resultados y fotos) - nunca deben acabar en el repo publico.
+op-tcg-partidas-*.json
+op-tcg-mazos-*.json
