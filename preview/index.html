@@ -169,7 +169,6 @@
     text-align: center;
     background: var(--bg);
   }
-  .card-cell.leader { border-color: var(--accent); }
   .cell-photo-box {
     width: 100%;
     aspect-ratio: 5/7;
@@ -203,14 +202,6 @@
     color: var(--accent-text);
     display: block;
     margin-top: 3px;
-  }
-  .card-cell .cell-leader-tag {
-    font-size: 8px;
-    font-weight: 700;
-    color: var(--accent);
-    display: block;
-    margin-top: 2px;
-    letter-spacing: 0.02em;
   }
   .card-cell .cell-controls { display: flex; justify-content: center; gap: 4px; margin-top: 5px; }
   .card-cell .cell-controls .qty-btn { width: 18px; height: 18px; font-size: 11px; }
@@ -2666,11 +2657,16 @@ cardPhotoInput.addEventListener('change', async (e) => {
   }
 });
 
+// The leader (currentDeck.cards[0]) is never shown in this list - it
+// already has its own dedicated "Foto del lider" section above, so
+// repeating it here would just be a redundant, non-editable entry.
 function renderDeckCardsList() {
   const total = deckTotalCards();
   deckCardCount.textContent = total + '/' + MAX_DECK_SIZE + ' cartas';
 
-  if (!currentDeck.cards.length) {
+  const nonLeaderCards = currentDeck.cards.slice(1);
+
+  if (!nonLeaderCards.length) {
     deckCardsList.innerHTML = '<p class="empty">Todavia no has anadido cartas.</p>';
     return;
   }
@@ -2678,12 +2674,11 @@ function renderDeckCardsList() {
   const grid = document.createElement('div');
   grid.className = 'card-grid';
 
-  currentDeck.cards.forEach((c, index) => {
-    const isLeader = index === 0;
+  nonLeaderCards.forEach(c => {
     const cell = document.createElement('div');
-    cell.className = 'card-cell' + (isLeader ? ' leader' : '');
+    cell.className = 'card-cell';
 
-    if (!isLeader) cell.appendChild(cardPhotoBox(c.code));
+    cell.appendChild(cardPhotoBox(c.code));
 
     const codeSpan = document.createElement('span');
     codeSpan.className = 'cell-code';
@@ -2695,44 +2690,37 @@ function renderDeckCardsList() {
     qtySpan.textContent = 'x' + c.qty;
     cell.appendChild(qtySpan);
 
-    if (isLeader) {
-      const tag = document.createElement('span');
-      tag.className = 'cell-leader-tag';
-      tag.textContent = 'LIDER';
-      cell.appendChild(tag);
-    } else {
-      const controls = document.createElement('div');
-      controls.className = 'cell-controls';
+    const controls = document.createElement('div');
+    controls.className = 'cell-controls';
 
-      const decBtn = document.createElement('button');
-      decBtn.type = 'button';
-      decBtn.className = 'qty-btn';
-      decBtn.textContent = '\u2212';
-      decBtn.setAttribute('aria-label', 'Quitar una copia');
-      decBtn.addEventListener('click', () => changeCardQty(c.code, -1));
-      controls.appendChild(decBtn);
+    const decBtn = document.createElement('button');
+    decBtn.type = 'button';
+    decBtn.className = 'qty-btn';
+    decBtn.textContent = '\u2212';
+    decBtn.setAttribute('aria-label', 'Quitar una copia');
+    decBtn.addEventListener('click', () => changeCardQty(c.code, -1));
+    controls.appendChild(decBtn);
 
-      const incBtn = document.createElement('button');
-      incBtn.type = 'button';
-      incBtn.className = 'qty-btn';
-      incBtn.textContent = '+';
-      incBtn.setAttribute('aria-label', 'Anadir una copia');
-      incBtn.addEventListener('click', () => changeCardQty(c.code, 1));
-      controls.appendChild(incBtn);
+    const incBtn = document.createElement('button');
+    incBtn.type = 'button';
+    incBtn.className = 'qty-btn';
+    incBtn.textContent = '+';
+    incBtn.setAttribute('aria-label', 'Anadir una copia');
+    incBtn.addEventListener('click', () => changeCardQty(c.code, 1));
+    controls.appendChild(incBtn);
 
-      cell.appendChild(controls);
+    cell.appendChild(controls);
 
-      const delBtn = document.createElement('button');
-      delBtn.type = 'button';
-      delBtn.className = 'cell-del';
-      delBtn.setAttribute('aria-label', 'Quitar carta');
-      delBtn.textContent = '\u00d7';
-      delBtn.addEventListener('click', () => {
-        currentDeck.cards = currentDeck.cards.filter(x => x.code !== c.code);
-        renderDeckCardsList();
-      });
-      cell.appendChild(delBtn);
-    }
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'cell-del';
+    delBtn.setAttribute('aria-label', 'Quitar carta');
+    delBtn.textContent = '\u00d7';
+    delBtn.addEventListener('click', () => {
+      currentDeck.cards = currentDeck.cards.filter(x => x.code !== c.code);
+      renderDeckCardsList();
+    });
+    cell.appendChild(delBtn);
 
     grid.appendChild(cell);
   });
