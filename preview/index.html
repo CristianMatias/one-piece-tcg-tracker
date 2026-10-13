@@ -158,7 +158,7 @@
   .deck-card-del { background: none; border: none; color: var(--text-muted); font-size: 15px; padding: 2px 4px; }
   .card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
   }
   .card-cell {
@@ -642,6 +642,10 @@
     .col::-webkit-scrollbar { width: 6px; }
     .col::-webkit-scrollbar-track { background: transparent; }
     .col::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+    /* Mazos needs more room than the other columns: it holds a 3-wide
+       grid of card photo thumbnails, which gets cramped at the default
+       equal-width column size. */
+    .col-2 { flex: 1.7; }
     .col::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
   }
 </style>
@@ -776,15 +780,6 @@
       <div style="background:var(--bg); border-radius:var(--radius); padding:2px 10px;" id="deck-cards-list">
         <p class="empty">Todavia no has anadido cartas.</p>
       </div>
-    </div>
-
-    <div class="section-gap">
-      <button class="deck-photo-row" id="deck-photo-btn" type="button">
-        <span style="flex:1;">
-          <p style="font-size:12px; margin:0; color:var(--text-secondary);">Fotos de cartas</p>
-          <p style="font-size:11px; margin:2px 0 0; color:var(--text-muted);">Buscar imagen o subir foto - proximamente</p>
-        </span>
-      </button>
     </div>
 
     <p class="error" id="deck-error">Elige un lider y anade al menos una carta.</p>
@@ -1147,7 +1142,6 @@ const deckBulkInput = document.getElementById('deck-bulk-input');
 const deckLoadListBtn = document.getElementById('deck-load-list-btn');
 const deckCardsList = document.getElementById('deck-cards-list');
 const deckCardCount = document.getElementById('deck-card-count');
-const deckPhotoBtn = document.getElementById('deck-photo-btn');
 const deckError = document.getElementById('deck-error');
 const deckSaveBtn = document.getElementById('deck-save-btn');
 const deckDeleteBtn = document.getElementById('deck-delete-btn');
@@ -2618,10 +2612,11 @@ const cardPhotoInput = document.getElementById('card-photo-input');
 let cardPhotoUploadTarget = null;
 
 // Card codes are expected to start with OP (standard set), ST (starter
-// deck) or P (promo) - e.g. "OP01-016", "ST01-001", "P-001". Anything
+// deck), EB (extra booster), PRB (premium booster) or P (promo) - e.g.
+// "OP01-016", "ST01-001", "EB01-001", "PRB01-001", "P-001". Anything
 // else is rejected before a photo can be attached to it.
 function isValidCardCodeForPhoto(code) {
-  return /^(OP|ST|P)/i.test(code);
+  return /^(OP|ST|EB|PRB|P)/i.test(code);
 }
 
 // Generic "card back" placeholder - distinct from the leader's skull
@@ -2921,10 +2916,6 @@ copyListBtn.addEventListener('click', async () => {
       showToast('No se pudo copiar la lista');
     }
   }
-});
-
-deckPhotoBtn.addEventListener('click', () => {
-  showToast('Fotos de cartas: proximamente');
 });
 
 deckSaveBtn.addEventListener('click', () => {
