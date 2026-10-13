@@ -5,3 +5,7 @@
 # nombres, resultados y fotos) - nunca deben acabar en el repo publico.
 op-tcg-partidas-*.json
 op-tcg-mazos-*.json
+
+# Notas de requisitos locales para features en desarrollo - no es
+# documentacion del proyecto, no debe subirse al repo.
+.prompt
