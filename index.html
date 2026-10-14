@@ -2658,42 +2658,19 @@ function placeholderCardSvg() {
     '</svg>';
 }
 
-// Official card art, fetched directly from the publisher's CDN using the
-// card's own code - e.g. "OP17-086" -> ".../OP17/en/small/OP17-086.webp".
-// The set folder is just the part of the code before the dash, which
-// matches every prefix we already validate (OP, ST, EB, PRB, P). This is
-// a best-effort third-party lookup: if it 404s or the service is down,
-// cardPhotoBox() falls back to the generic placeholder below.
-function externalCardImageUrl(code) {
-  const set = code.split('-')[0];
-  return 'https://cards.oplaytcg.com/' + set + '/en/small/' + code + '.webp';
-}
-
 function cardPhotoBox(code) {
   const box = document.createElement('button');
   box.type = 'button';
   box.className = 'cell-photo-box';
-  box.setAttribute('aria-label', 'Cambiar foto de ' + code);
-  const manualPhoto = cardPhotos[code];
-  if (manualPhoto) {
-    // The user uploaded their own art for this code - always wins over
-    // the automatic lookup (e.g. the official art failed to load, or
-    // they just prefer an alternate art).
-    box.innerHTML = '<img src="' + manualPhoto + '" alt="' + escapeHtml(code) + '" />';
-  } else if (isValidCardCodeForPhoto(code)) {
-    const img = document.createElement('img');
-    img.src = externalCardImageUrl(code);
-    img.alt = escapeHtml(code);
-    img.loading = 'lazy';
-    img.onerror = () => { box.innerHTML = placeholderCardSvg(); };
-    box.appendChild(img);
-  } else {
-    box.innerHTML = placeholderCardSvg();
-  }
+  box.setAttribute('aria-label', 'Subir foto de ' + code);
+  const photo = cardPhotos[code];
+  box.innerHTML = photo
+    ? '<img src="' + photo + '" alt="' + escapeHtml(code) + '" />'
+    : placeholderCardSvg();
   box.addEventListener('click', (e) => {
     e.stopPropagation();
     if (!isValidCardCodeForPhoto(code)) {
-      showToast('El codigo debe empezar por OP, ST, EB, PRB o P');
+      showToast('El codigo debe empezar por OP, ST o P');
       return;
     }
     cardPhotoUploadTarget = code;
