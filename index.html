@@ -158,7 +158,7 @@
   .deck-card-del { background: none; border: none; color: var(--text-muted); font-size: 15px; padding: 2px 4px; }
   .card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
   }
   .card-cell {
@@ -169,12 +169,45 @@
     text-align: center;
     background: var(--bg);
   }
-  .card-cell.leader { border-color: var(--accent); }
+  .cell-photo-box {
+    width: 100%;
+    aspect-ratio: 5/7;
+    border-radius: 5px;
+    overflow: hidden;
+    background: var(--card);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-bottom: 5px;
+    padding: 0;
+  }
+  .cell-photo-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .cell-photo-box svg { width: 55%; height: 55%; }
   .card-cell .cell-code {
     font-size: 10px;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     display: block;
     word-break: break-all;
+  }
+  .card-cell .cell-name {
+    font-size: 10px;
+    color: var(--text-secondary);
+    display: block;
+    margin-top: 2px;
+    cursor: pointer;
+    word-break: break-word;
+  }
+  .card-cell .cell-name:hover { text-decoration: underline; }
+  .card-cell .cell-name-empty {
+    color: var(--text-muted);
+    font-style: italic;
   }
   .card-cell .cell-qty {
     font-size: 14px;
@@ -182,14 +215,6 @@
     color: var(--accent-text);
     display: block;
     margin-top: 3px;
-  }
-  .card-cell .cell-leader-tag {
-    font-size: 8px;
-    font-weight: 700;
-    color: var(--accent);
-    display: block;
-    margin-top: 2px;
-    letter-spacing: 0.02em;
   }
   .card-cell .cell-controls { display: flex; justify-content: center; gap: 4px; margin-top: 5px; }
   .card-cell .cell-controls .qty-btn { width: 18px; height: 18px; font-size: 11px; }
@@ -621,6 +646,10 @@
     .col::-webkit-scrollbar { width: 6px; }
     .col::-webkit-scrollbar-track { background: transparent; }
     .col::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+    /* Mazos needs more room than the other columns: it holds a 3-wide
+       grid of card photo thumbnails, which gets cramped at the default
+       equal-width column size. */
+    .col-2 { flex: 1.7; }
     .col::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
   }
 </style>
@@ -733,6 +762,7 @@
       <div id="leader-photo-box"></div>
       <input type="file" id="leader-photo-input" accept="image/*" style="display:none;" />
     </div>
+    <input type="file" id="card-photo-input" accept="image/*" style="display:none;" />
 
     <div class="section-gap">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
@@ -754,15 +784,6 @@
       <div style="background:var(--bg); border-radius:var(--radius); padding:2px 10px;" id="deck-cards-list">
         <p class="empty">Todavia no has anadido cartas.</p>
       </div>
-    </div>
-
-    <div class="section-gap">
-      <button class="deck-photo-row" id="deck-photo-btn" type="button">
-        <span style="flex:1;">
-          <p style="font-size:12px; margin:0; color:var(--text-secondary);">Fotos de cartas</p>
-          <p style="font-size:11px; margin:2px 0 0; color:var(--text-muted);">Buscar imagen o subir foto - proximamente</p>
-        </span>
-      </button>
     </div>
 
     <p class="error" id="deck-error">Elige un lider y anade al menos una carta.</p>
@@ -944,6 +965,8 @@ const LEADER_COLORS_KEY = 'op_tcg_leader_colors';
 const DECKS_KEY = 'op_tcg_decks';
 const LEADER_PHOTOS_KEY = 'op_tcg_leader_photos';
 const TOURNAMENTS_KEY = 'op_tcg_tournaments';
+const CARD_PHOTOS_KEY = 'op_tcg_card_photos';
+const CARD_NAMES_KEY = 'op_tcg_card_names';
 
 // --- IndexedDB storage layer ---
 // All app data (leaders, matches, decks, colors, photos, tournaments) lives
@@ -956,7 +979,8 @@ const DB_STORE = 'kv';
 const DB_VERSION = 1;
 const ALL_STORAGE_KEYS = [
   LEADERS_KEY, LEGACY_RIVAL_LEADERS_KEY, MATCHES_KEY,
-  LEADER_COLORS_KEY, DECKS_KEY, LEADER_PHOTOS_KEY, TOURNAMENTS_KEY
+  LEADER_COLORS_KEY, DECKS_KEY, LEADER_PHOTOS_KEY, TOURNAMENTS_KEY,
+  CARD_PHOTOS_KEY, CARD_NAMES_KEY
 ];
 
 let dbPromise = null;
@@ -1073,6 +1097,8 @@ let leaderColors = {};
 let decks = [];
 let currentDeck = null;
 let leaderPhotos = {};
+let cardPhotos = {};
+let cardNames = {};
 let tournaments = [];
 let torneoDraft = null;
 let torneoConfirmPending = false;
@@ -1122,7 +1148,6 @@ const deckBulkInput = document.getElementById('deck-bulk-input');
 const deckLoadListBtn = document.getElementById('deck-load-list-btn');
 const deckCardsList = document.getElementById('deck-cards-list');
 const deckCardCount = document.getElementById('deck-card-count');
-const deckPhotoBtn = document.getElementById('deck-photo-btn');
 const deckError = document.getElementById('deck-error');
 const deckSaveBtn = document.getElementById('deck-save-btn');
 const deckDeleteBtn = document.getElementById('deck-delete-btn');
@@ -1323,6 +1348,50 @@ async function saveLeaderPhotosData(photos) {
 
 function saveLeaderPhotos() {
   return saveLeaderPhotosData(leaderPhotos);
+}
+
+// Card photos are keyed by card code (e.g. "OP01-016") and shared across
+// every deck - uploading a photo for a code makes it appear on any deck
+// that uses that card, same as leader photos are shared by leader name.
+async function loadCardPhotos() {
+  if (!HAS_STORAGE) return {};
+  try {
+    const parsed = await idbGet(CARD_PHOTOS_KEY);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+async function saveCardPhotos() {
+  if (!HAS_STORAGE) return;
+  try {
+    await idbSet(CARD_PHOTOS_KEY, cardPhotos);
+  } catch (e) {
+    showToast('No se pudo guardar la foto en el telefono');
+  }
+}
+
+// Card names are optional, hand-typed labels keyed by card code (e.g.
+// "OP01-016" -> "Monkey D. Luffy"), shared across every deck the same
+// way card photos are - naming a card once labels it everywhere.
+async function loadCardNames() {
+  if (!HAS_STORAGE) return {};
+  try {
+    const parsed = await idbGet(CARD_NAMES_KEY);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+async function saveCardNames() {
+  if (!HAS_STORAGE) return;
+  try {
+    await idbSet(CARD_NAMES_KEY, cardNames);
+  } catch (e) {
+    showToast('No se pudo guardar el nombre en el telefono');
+  }
 }
 
 function showToast(msg) {
@@ -1813,6 +1882,8 @@ if (HAS_STORAGE) await migrateFromLocalStorageIfNeeded();
 
 decks = await loadDecks();
 leaderPhotos = await loadLeaderPhotos();
+cardPhotos = await loadCardPhotos();
+cardNames = await loadCardNames();
 leaders = await loadLeaders();
 matches = await loadMatches();
 leaderColors = await loadLeaderColors();
@@ -2565,11 +2636,126 @@ leaderPhotoInput.addEventListener('change', async (e) => {
   }
 });
 
+// --- Card photos (per card code, shared across every deck) ---
+const cardPhotoInput = document.getElementById('card-photo-input');
+let cardPhotoUploadTarget = null;
+
+// Card codes are expected to start with OP (standard set), ST (starter
+// deck), EB (extra booster), PRB (premium booster) or P (promo) - e.g.
+// "OP01-016", "ST01-001", "EB01-001", "PRB01-001", "P-001". Anything
+// else is rejected before a photo can be attached to it.
+function isValidCardCodeForPhoto(code) {
+  return /^(OP|ST|EB|PRB|P)/i.test(code);
+}
+
+// Generic "card back" placeholder - distinct from the leader's skull
+// placeholder, drawn inline so it never depends on a network request.
+function placeholderCardSvg() {
+  return '<svg viewBox="0 0 70 98" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="4" y="4" width="62" height="90" rx="6" fill="none" stroke="var(--text-muted)" stroke-width="3.5"/>' +
+    '<circle cx="35" cy="49" r="16" fill="none" stroke="var(--text-muted)" stroke-width="3.5"/>' +
+    '<path d="M35 41 L35 57 M27 49 L43 49" stroke="var(--text-muted)" stroke-width="3.5" stroke-linecap="round"/>' +
+    '</svg>';
+}
+
+// Official card art, fetched directly from the publisher's CDN using the
+// card's own code - e.g. "OP17-086" -> ".../OP17/en/small/OP17-086.webp".
+// The set folder is just the part of the code before the dash, which
+// matches every prefix we already validate (OP, ST, EB, PRB, P). This is
+// a best-effort third-party lookup: if it 404s or the service is down,
+// cardPhotoBox() falls back to the generic placeholder below.
+function externalCardImageUrl(code) {
+  const set = code.split('-')[0];
+  return 'https://cards.oplaytcg.com/' + set + '/en/small/' + code + '.webp';
+}
+
+function cardPhotoBox(code) {
+  const box = document.createElement('button');
+  box.type = 'button';
+  box.className = 'cell-photo-box';
+  box.setAttribute('aria-label', 'Cambiar foto de ' + code);
+  const manualPhoto = cardPhotos[code];
+  if (manualPhoto) {
+    // The user uploaded their own art for this code - always wins over
+    // the automatic lookup (e.g. the official art failed to load, or
+    // they just prefer an alternate art).
+    box.innerHTML = '<img src="' + manualPhoto + '" alt="' + escapeHtml(code) + '" />';
+  } else if (isValidCardCodeForPhoto(code)) {
+    const img = document.createElement('img');
+    // Some hotlink-protection setups reject requests whose Referer header
+    // points at a different site but allow ones with no Referer at all -
+    // this asks the browser to omit it entirely for this request.
+    img.referrerPolicy = 'no-referrer';
+    img.src = externalCardImageUrl(code);
+    img.alt = escapeHtml(code);
+    img.loading = 'lazy';
+    img.onerror = () => { box.innerHTML = placeholderCardSvg(); };
+    box.appendChild(img);
+  } else {
+    box.innerHTML = placeholderCardSvg();
+  }
+  box.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!isValidCardCodeForPhoto(code)) {
+      showToast('El codigo debe empezar por OP, ST, EB, PRB o P');
+      return;
+    }
+    cardPhotoUploadTarget = code;
+    cardPhotoInput.click();
+  });
+  return box;
+}
+
+cardPhotoInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  cardPhotoInput.value = '';
+  if (!file || !cardPhotoUploadTarget) return;
+  try {
+    cardPhotos[cardPhotoUploadTarget] = await readAndResizeImage(file, 300, 0.8);
+    saveCardPhotos();
+    renderDeckCardsList();
+    showToast('Foto cargada');
+  } catch (err) {
+    showToast('No se pudo cargar la imagen');
+  } finally {
+    cardPhotoUploadTarget = null;
+  }
+});
+
+// A hand-typed, optional label per card code (e.g. "OP01-016" -> "Monkey
+// D. Luffy"), shown under the code to make the list easier to read at a
+// glance. Shared across every deck, same as the photo - naming a card
+// once labels it everywhere. Tapping it opens a simple prompt; clearing
+// the text removes the label again.
+function cardNameSpan(code) {
+  const span = document.createElement('span');
+  span.className = 'cell-name' + (cardNames[code] ? '' : ' cell-name-empty');
+  span.textContent = cardNames[code] || '+ nombre';
+  span.setAttribute('role', 'button');
+  span.title = cardNames[code] ? 'Editar nombre' : 'Anadir nombre';
+  span.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const input = window.prompt('Nombre de la carta ' + code + ':', cardNames[code] || '');
+    if (input === null) return; // cancelled
+    const trimmed = input.trim();
+    if (trimmed) cardNames[code] = trimmed;
+    else delete cardNames[code];
+    saveCardNames();
+    renderDeckCardsList();
+  });
+  return span;
+}
+
+// The leader (currentDeck.cards[0]) is never shown in this list - it
+// already has its own dedicated "Foto del lider" section above, so
+// repeating it here would just be a redundant, non-editable entry.
 function renderDeckCardsList() {
   const total = deckTotalCards();
   deckCardCount.textContent = total + '/' + MAX_DECK_SIZE + ' cartas';
 
-  if (!currentDeck.cards.length) {
+  const nonLeaderCards = currentDeck.cards.slice(1);
+
+  if (!nonLeaderCards.length) {
     deckCardsList.innerHTML = '<p class="empty">Todavia no has anadido cartas.</p>';
     return;
   }
@@ -2577,59 +2763,55 @@ function renderDeckCardsList() {
   const grid = document.createElement('div');
   grid.className = 'card-grid';
 
-  currentDeck.cards.forEach((c, index) => {
-    const isLeader = index === 0;
+  nonLeaderCards.forEach(c => {
     const cell = document.createElement('div');
-    cell.className = 'card-cell' + (isLeader ? ' leader' : '');
+    cell.className = 'card-cell';
+
+    cell.appendChild(cardPhotoBox(c.code));
 
     const codeSpan = document.createElement('span');
     codeSpan.className = 'cell-code';
     codeSpan.textContent = c.code;
     cell.appendChild(codeSpan);
 
+    cell.appendChild(cardNameSpan(c.code));
+
     const qtySpan = document.createElement('span');
     qtySpan.className = 'cell-qty';
     qtySpan.textContent = 'x' + c.qty;
     cell.appendChild(qtySpan);
 
-    if (isLeader) {
-      const tag = document.createElement('span');
-      tag.className = 'cell-leader-tag';
-      tag.textContent = 'LIDER';
-      cell.appendChild(tag);
-    } else {
-      const controls = document.createElement('div');
-      controls.className = 'cell-controls';
+    const controls = document.createElement('div');
+    controls.className = 'cell-controls';
 
-      const decBtn = document.createElement('button');
-      decBtn.type = 'button';
-      decBtn.className = 'qty-btn';
-      decBtn.textContent = '\u2212';
-      decBtn.setAttribute('aria-label', 'Quitar una copia');
-      decBtn.addEventListener('click', () => changeCardQty(c.code, -1));
-      controls.appendChild(decBtn);
+    const decBtn = document.createElement('button');
+    decBtn.type = 'button';
+    decBtn.className = 'qty-btn';
+    decBtn.textContent = '\u2212';
+    decBtn.setAttribute('aria-label', 'Quitar una copia');
+    decBtn.addEventListener('click', () => changeCardQty(c.code, -1));
+    controls.appendChild(decBtn);
 
-      const incBtn = document.createElement('button');
-      incBtn.type = 'button';
-      incBtn.className = 'qty-btn';
-      incBtn.textContent = '+';
-      incBtn.setAttribute('aria-label', 'Anadir una copia');
-      incBtn.addEventListener('click', () => changeCardQty(c.code, 1));
-      controls.appendChild(incBtn);
+    const incBtn = document.createElement('button');
+    incBtn.type = 'button';
+    incBtn.className = 'qty-btn';
+    incBtn.textContent = '+';
+    incBtn.setAttribute('aria-label', 'Anadir una copia');
+    incBtn.addEventListener('click', () => changeCardQty(c.code, 1));
+    controls.appendChild(incBtn);
 
-      cell.appendChild(controls);
+    cell.appendChild(controls);
 
-      const delBtn = document.createElement('button');
-      delBtn.type = 'button';
-      delBtn.className = 'cell-del';
-      delBtn.setAttribute('aria-label', 'Quitar carta');
-      delBtn.textContent = '\u00d7';
-      delBtn.addEventListener('click', () => {
-        currentDeck.cards = currentDeck.cards.filter(x => x.code !== c.code);
-        renderDeckCardsList();
-      });
-      cell.appendChild(delBtn);
-    }
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'cell-del';
+    delBtn.setAttribute('aria-label', 'Quitar carta');
+    delBtn.textContent = '\u00d7';
+    delBtn.addEventListener('click', () => {
+      currentDeck.cards = currentDeck.cards.filter(x => x.code !== c.code);
+      renderDeckCardsList();
+    });
+    cell.appendChild(delBtn);
 
     grid.appendChild(cell);
   });
@@ -2813,10 +2995,6 @@ copyListBtn.addEventListener('click', async () => {
       showToast('No se pudo copiar la lista');
     }
   }
-});
-
-deckPhotoBtn.addEventListener('click', () => {
-  showToast('Fotos de cartas: proximamente');
 });
 
 deckSaveBtn.addEventListener('click', () => {
