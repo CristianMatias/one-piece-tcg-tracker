@@ -2682,6 +2682,10 @@ function cardPhotoBox(code) {
     box.innerHTML = '<img src="' + manualPhoto + '" alt="' + escapeHtml(code) + '" />';
   } else if (isValidCardCodeForPhoto(code)) {
     const img = document.createElement('img');
+    // Some hotlink-protection setups reject requests whose Referer header
+    // points at a different site but allow ones with no Referer at all -
+    // this asks the browser to omit it entirely for this request.
+    img.referrerPolicy = 'no-referrer';
     img.src = externalCardImageUrl(code);
     img.alt = escapeHtml(code);
     img.loading = 'lazy';
