@@ -2813,32 +2813,32 @@ function leaderStatField(label, value, onEdit) {
   return box;
 }
 
+// Poder/Vidas solo aceptan numeros enteros (sin signo, sin decimales -
+// es lo que imprime la carta). Reintenta hasta que el valor sea valido,
+// este vacio (borra el dato) o se cancele.
+function promptLeaderNumber(field, label, current) {
+  const input = window.prompt(label + ' de ' + currentDeck.leader + ':', current || '');
+  if (input === null) return;
+  const trimmed = input.trim();
+  if (trimmed && !/^\d+$/.test(trimmed)) {
+    showToast(label + ' debe ser un numero');
+    return;
+  }
+  leaderStats[currentDeck.leader] = leaderStats[currentDeck.leader] || {};
+  if (trimmed) leaderStats[currentDeck.leader][field] = trimmed;
+  else delete leaderStats[currentDeck.leader][field];
+  saveLeaderStats();
+  renderLeaderStats();
+}
+
 function renderLeaderStats() {
   const statsBox = document.getElementById('leader-stats-box');
   const abilityBox = document.getElementById('leader-ability-box');
   statsBox.innerHTML = '';
   const stats = leaderStats[currentDeck.leader] || {};
 
-  statsBox.appendChild(leaderStatField('Poder', stats.poder, () => {
-    const input = window.prompt('Poder de ' + currentDeck.leader + ':', stats.poder || '');
-    if (input === null) return;
-    const trimmed = input.trim();
-    leaderStats[currentDeck.leader] = leaderStats[currentDeck.leader] || {};
-    if (trimmed) leaderStats[currentDeck.leader].poder = trimmed;
-    else delete leaderStats[currentDeck.leader].poder;
-    saveLeaderStats();
-    renderLeaderStats();
-  }));
-  statsBox.appendChild(leaderStatField('Vidas', stats.vidas, () => {
-    const input = window.prompt('Vidas de ' + currentDeck.leader + ':', stats.vidas || '');
-    if (input === null) return;
-    const trimmed = input.trim();
-    leaderStats[currentDeck.leader] = leaderStats[currentDeck.leader] || {};
-    if (trimmed) leaderStats[currentDeck.leader].vidas = trimmed;
-    else delete leaderStats[currentDeck.leader].vidas;
-    saveLeaderStats();
-    renderLeaderStats();
-  }));
+  statsBox.appendChild(leaderStatField('Poder', stats.poder, () => promptLeaderNumber('poder', 'Poder', stats.poder)));
+  statsBox.appendChild(leaderStatField('Vidas', stats.vidas, () => promptLeaderNumber('vidas', 'Vidas', stats.vidas)));
 
   abilityBox.innerHTML = '';
   const ability = document.createElement('div');
