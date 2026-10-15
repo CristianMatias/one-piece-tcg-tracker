@@ -120,14 +120,14 @@
   <div class="page-intro">
     <h1>Mockup — Habilidad del lider (columna Mazo)</h1>
     <p>
-      Fila superior igual que en la app (Lider/Nombre/Colores a la izquierda, Foto del
-      lider a la derecha). Debajo, la propuesta para rellenar el hueco entre "Colores
-      del mazo" y "Cartas del mazo": tres datos del lider, escritos a mano una vez y
-      compartidos entre todos los mazos que usan ese lider (mismo patron que la foto y
-      el nombre de carta): <b>Poder</b> y <b>Vidas</b> como dos cifras, y <b>Habilidad</b>
-      como texto libre debajo. Se tocan para editar, igual que "+ nombre" en las cartas.
-      Nada de esto esta conectado a ningun codigo todavia, es solo para revisar el sitio
-      y el tamano antes de implementarlo.
+      Fila superior igual que en la app (Lider/Nombre/Colores/Poder-Vidas a la izquierda,
+      Foto del lider a la derecha) — <b>Poder</b> y <b>Vidas</b> ahora van junto a Colores,
+      a la izquierda de la foto. Debajo, a todo lo ancho, la <b>Habilidad</b> como texto
+      libre, y despues "Cartas del mazo" sin cambios. Los tres datos se escriben a mano
+      una vez y se comparten entre todos los mazos que usan ese lider (mismo patron que
+      la foto y el nombre de carta), tocando para editar igual que "+ nombre" en las
+      cartas. Nada de esto esta conectado a ningun codigo todavia, es solo para revisar
+      el sitio y el tamano antes de implementarlo.
     </p>
   </div>
 
@@ -151,6 +151,17 @@
                 <div class="modal-btn" style="border-color:var(--accent); background:var(--accent-tint); color:var(--accent-text); padding:7px 14px; border-radius:999px;">B</div>
               </div>
             </div>
+
+            <div class="section-gap ld-stats">
+              <div class="ld-stat" title="Tocar para editar">
+                <p class="ld-num">5000</p>
+                <p class="ld-lab">Poder</p>
+              </div>
+              <div class="ld-stat" title="Tocar para editar">
+                <p class="ld-num">5</p>
+                <p class="ld-lab">Vidas</p>
+              </div>
+            </div>
           </div>
 
           <div style="width:190px; flex-shrink:0;">
@@ -168,16 +179,6 @@
 
         <div class="section-gap">
           <p class="label">Habilidad del lider</p>
-          <div class="ld-stats">
-            <div class="ld-stat" title="Tocar para editar">
-              <p class="ld-num">5000</p>
-              <p class="ld-lab">Poder</p>
-            </div>
-            <div class="ld-stat" title="Tocar para editar">
-              <p class="ld-num">5</p>
-              <p class="ld-lab">Vidas</p>
-            </div>
-          </div>
           <div class="ld-ability" title="Tocar para editar">
             [On Your Turn] All of your Characters with a cost of 2 or more
             gain +1000 power while attacking.
@@ -217,6 +218,17 @@
                 <div class="modal-btn" style="border-color:var(--accent); background:var(--accent-tint); color:var(--accent-text); padding:7px 14px; border-radius:999px;">Y</div>
               </div>
             </div>
+
+            <div class="section-gap ld-stats">
+              <div class="ld-stat" title="Tocar para editar">
+                <p class="ld-num empty">+ poder</p>
+                <p class="ld-lab">Poder</p>
+              </div>
+              <div class="ld-stat" title="Tocar para editar">
+                <p class="ld-num empty">+ vidas</p>
+                <p class="ld-lab">Vidas</p>
+              </div>
+            </div>
           </div>
 
           <div style="width:190px; flex-shrink:0;">
@@ -235,16 +247,6 @@
         <div class="section-gap">
           <p class="label">Habilidad del lider</p>
           <p class="ld-note">Toca para rellenar — opcional, no bloquea guardar el mazo</p>
-          <div class="ld-stats">
-            <div class="ld-stat" title="Tocar para editar">
-              <p class="ld-num empty">+ poder</p>
-              <p class="ld-lab">Poder</p>
-            </div>
-            <div class="ld-stat" title="Tocar para editar">
-              <p class="ld-num empty">+ vidas</p>
-              <p class="ld-lab">Vidas</p>
-            </div>
-          </div>
           <div class="ld-ability empty" title="Tocar para editar">
             + anadir habilidad del lider
           </div>
