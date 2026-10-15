@@ -968,7 +968,7 @@
   <div class="modal-card">
     <p class="modal-title">Colores de lideres</p>
     <p style="font-size:11.5px; color:var(--text-muted); margin:-6px 0 10px;">
-      Se detectan solo por las ultimas letras del nombre. Toca un color para asignarlo o quitarlo (maximo 2). B=Negro U=Azul Y=Amarillo R=Rojo G=Verde P=Purpura.
+      Se detectan solo por las ultimas letras del nombre. Toca un color para asignarlo o quitarlo (maximo 2). B=Negro U=Azul Y=Amarillo R=Rojo G=Verde P=Purpura. Toca el nombre del lider para renombrarlo (sin perder partidas, mazos ni fotos).
     </p>
     <div class="colors-list" id="colors-list"></div>
     <button class="modal-btn primary" id="colors-close" type="button">Cerrar</button>
@@ -1142,6 +1142,10 @@ function deckTotalCards() {
 const ADD_OPTION = '__add__';
 const COLOR_LETTERS = ['B', 'U', 'Y', 'R', 'G', 'P'];
 const COLOR_NAMES = { B: 'Negro', U: 'Azul', Y: 'Amarillo', R: 'Rojo', G: 'Verde', P: 'Purpura' };
+// Mismos tonos que .color-chip/.color-badge, reutilizados para pintar las
+// cajas de Poder/Vidas del color (o colores) del lider.
+const COLOR_HEX = { B: '#2b2b2b', U: '#2f6fed', Y: '#e8b93b', R: 'var(--accent)', G: '#2f8f4e', P: '#7a3fa0' };
+const COLOR_ON_TEXT = { B: '#fff', U: '#fff', Y: '#241c04', R: '#fff', G: '#fff', P: '#fff' };
 
 let leaders = [];
 let matches = [];
@@ -2088,6 +2092,13 @@ function renderColorsList() {
     const label = document.createElement('span');
     label.className = 'color-row-name';
     label.textContent = name;
+    label.style.cursor = 'pointer';
+    label.title = 'Tocar para renombrar';
+    label.addEventListener('click', () => {
+      const input = window.prompt('Nuevo nombre para "' + name + '":', name);
+      if (input === null) return;
+      renameLeader(name, input.trim());
+    });
     row.appendChild(label);
 
     const chips = document.createElement('div');
@@ -2107,6 +2118,65 @@ function renderColorsList() {
   });
 }
 
+// Renombra un lider en todos los sitios donde su nombre vive como clave
+// o como valor de texto, para no perder nada (partidas, mazos, torneos,
+// colores, foto, poder/vidas/habilidad) al cambiarle el nombre.
+function renameLeader(oldName, newName) {
+  if (!newName || newName === oldName) return;
+  if (leaders.includes(newName)) {
+    showToast('Ya existe un lider con ese nombre');
+    return;
+  }
+
+  const idx = leaders.indexOf(oldName);
+  if (idx !== -1) leaders[idx] = newName;
+  saveLeaders();
+
+  matches.forEach(m => {
+    if (m.miLider === oldName) m.miLider = newName;
+    if (m.liderRival === oldName) m.liderRival = newName;
+  });
+  saveMatches();
+
+  decks.forEach(d => { if (d.leader === oldName) d.leader = newName; });
+  saveDecks();
+
+  tournaments.forEach(t => {
+    if (t.leader === oldName) t.leader = newName;
+    (t.rounds || []).forEach(r => { if (r.rival === oldName) r.rival = newName; });
+  });
+  saveTournaments();
+
+  [leaderColors, leaderPhotos, leaderStats].forEach((store) => {
+    if (store[oldName] !== undefined) {
+      store[newName] = store[oldName];
+      delete store[oldName];
+    }
+  });
+  saveLeaderColors();
+  saveLeaderPhotos();
+  saveLeaderStats();
+
+  if (selectedLeader === oldName) selectedLeader = newName;
+  if (selectedRival === oldName) selectedRival = newName;
+  if (currentDeck && currentDeck.leader === oldName) currentDeck.leader = newName;
+  if (torneoDraft && torneoDraft.leader === oldName) torneoDraft.leader = newName;
+
+  renderColorsList();
+  renderMiLiderSelect();
+  renderRivalSelect();
+  renderLeaderPreview();
+  updateStats(selectedLeader);
+  if (currentDeck) {
+    renderDeckLiderSelect();
+    renderDeckColorChips();
+    renderLeaderStats();
+    renderLeaderPhoto();
+  }
+  if (torneoDraft) renderTorneoLeaderSelect();
+  showToast('Lider renombrado');
+}
+
 function toggleLeaderColor(name, letter) {
   const current = leaderColors[name] ? leaderColors[name].slice() : [];
   const idx = current.indexOf(letter);
@@ -2124,7 +2194,10 @@ function toggleLeaderColor(name, letter) {
   renderColorsList();
   renderMiLiderSelect();
   renderRivalSelect();
-  if (currentDeck) renderDeckLiderSelect();
+  if (currentDeck) {
+    renderDeckLiderSelect();
+    if (currentDeck.leader === name) renderLeaderStats();
+  }
   if (torneoDraft) renderTorneoLeaderSelect();
 }
 
@@ -2801,16 +2874,31 @@ cardPhotoInput.addEventListener('change', async (e) => {
 // Poder/vidas/habilidad del lider activo: igual que la foto, hand-typed
 // una vez y compartido por todos los mazos que usan ese lider. Opcional,
 // no bloquea guardar el mazo.
-function leaderStatField(label, value, onEdit) {
+function leaderStatField(label, value, onEdit, colorStyle) {
   const box = document.createElement('div');
   box.className = 'ld-stat';
   box.setAttribute('role', 'button');
   box.title = value ? 'Editar ' + label.toLowerCase() : 'Anadir ' + label.toLowerCase();
-  box.innerHTML =
-    '<p class="ld-num' + (value ? '' : ' empty') + '">' + escapeHtml(value || ('+ ' + label.toLowerCase())) + '</p>' +
-    '<p class="ld-lab">' + label + '</p>';
+  if (colorStyle) box.style.cssText += colorStyle;
+  const textStyle = colorStyle ? ' style="color:inherit;"' : '';
+  box.innerHTML +=
+    '<p class="ld-num' + (value ? '' : ' empty') + '"' + textStyle + '>' + escapeHtml(value || ('+ ' + label.toLowerCase())) + '</p>' +
+    '<p class="ld-lab"' + textStyle + '>' + label + '</p>';
   box.addEventListener('click', onEdit);
   return box;
+}
+
+// Fondo de las cajas Poder/Vidas segun el color (o colores) del lider:
+// un color -> relleno solido; dos colores -> mitad y mitad en diagonal.
+// Sin colores asignados, se queda con el fondo neutro de siempre.
+function leaderColorBoxStyle(colors) {
+  if (!colors.length) return null;
+  if (colors.length === 1) {
+    return 'background:' + COLOR_HEX[colors[0]] + ';color:' + COLOR_ON_TEXT[colors[0]] + ';';
+  }
+  const [a, b] = colors;
+  const textColor = (a === 'Y' || b === 'Y') ? COLOR_ON_TEXT.Y : '#fff';
+  return 'background:linear-gradient(135deg,' + COLOR_HEX[a] + ' 50%,' + COLOR_HEX[b] + ' 50%);color:' + textColor + ';';
 }
 
 // Poder/Vidas solo aceptan numeros enteros (sin signo, sin decimales -
@@ -2836,9 +2924,10 @@ function renderLeaderStats() {
   const abilityBox = document.getElementById('leader-ability-box');
   statsBox.innerHTML = '';
   const stats = leaderStats[currentDeck.leader] || {};
+  const colorStyle = leaderColorBoxStyle(leaderColors[currentDeck.leader] || []);
 
-  statsBox.appendChild(leaderStatField('Poder', stats.poder, () => promptLeaderNumber('poder', 'Poder', stats.poder)));
-  statsBox.appendChild(leaderStatField('Vidas', stats.vidas, () => promptLeaderNumber('vidas', 'Vidas', stats.vidas)));
+  statsBox.appendChild(leaderStatField('Poder', stats.poder, () => promptLeaderNumber('poder', 'Poder', stats.poder), colorStyle));
+  statsBox.appendChild(leaderStatField('Vidas', stats.vidas, () => promptLeaderNumber('vidas', 'Vidas', stats.vidas), colorStyle));
 
   abilityBox.innerHTML = '';
   const ability = document.createElement('div');
