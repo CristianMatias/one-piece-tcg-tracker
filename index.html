@@ -2855,8 +2855,9 @@ function renderLeaderStats() {
 // solo se envuelve en un span lo que cae entre "<" y ">".
 function abilityHtml(text) {
   return text.split(/(<[^<>\n]+>)/g).map(part => {
-    if (/^<[^<>\n]+>$/.test(part)) {
-      return '<span class="ld-keyword">' + escapeHtml(part) + '</span>';
+    const m = part.match(/^<([^<>\n]+)>$/);
+    if (m) {
+      return '<span class="ld-keyword">' + escapeHtml(m[1]) + '</span>';
     }
     return escapeHtml(part);
   }).join('');
