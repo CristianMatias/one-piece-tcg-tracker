@@ -209,6 +209,29 @@
     color: var(--text-muted);
     font-style: italic;
   }
+  .ld-stats { display: flex; gap: 8px; }
+  .ld-stat {
+    flex: 1;
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 9px 8px;
+    text-align: center;
+    cursor: pointer;
+  }
+  .ld-stat .ld-num { font-size: 18px; font-weight: 600; margin: 0; }
+  .ld-stat .ld-num.empty { color: var(--text-muted); font-style: italic; font-size: 13px; }
+  .ld-stat .ld-lab { font-size: 10px; color: var(--text-muted); margin: 2px 0 0; }
+  .ld-ability {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 9px 11px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    cursor: pointer;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .ld-ability.empty { color: var(--text-muted); font-style: italic; }
   .card-cell .cell-qty {
     font-size: 14px;
     font-weight: 700;
@@ -758,6 +781,8 @@
           <p class="label">Colores del mazo</p>
           <div style="display:flex; gap:8px;" id="deck-color-chips"></div>
         </div>
+
+        <div class="section-gap ld-stats" id="leader-stats-box"></div>
       </div>
 
       <div style="width:190px; flex-shrink:0;">
@@ -767,6 +792,11 @@
       </div>
     </div>
     <input type="file" id="card-photo-input" accept="image/*" style="display:none;" />
+
+    <div class="section-gap">
+      <p class="label">Habilidad del lider</p>
+      <div id="leader-ability-box"></div>
+    </div>
 
     <div class="section-gap">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:8px;">
@@ -975,6 +1005,7 @@ const LEADER_PHOTOS_KEY = 'op_tcg_leader_photos';
 const TOURNAMENTS_KEY = 'op_tcg_tournaments';
 const CARD_PHOTOS_KEY = 'op_tcg_card_photos';
 const CARD_NAMES_KEY = 'op_tcg_card_names';
+const LEADER_STATS_KEY = 'op_tcg_leader_stats';
 
 // --- IndexedDB storage layer ---
 // All app data (leaders, matches, decks, colors, photos, tournaments) lives
@@ -988,7 +1019,7 @@ const DB_VERSION = 1;
 const ALL_STORAGE_KEYS = [
   LEADERS_KEY, LEGACY_RIVAL_LEADERS_KEY, MATCHES_KEY,
   LEADER_COLORS_KEY, DECKS_KEY, LEADER_PHOTOS_KEY, TOURNAMENTS_KEY,
-  CARD_PHOTOS_KEY, CARD_NAMES_KEY
+  CARD_PHOTOS_KEY, CARD_NAMES_KEY, LEADER_STATS_KEY
 ];
 
 let dbPromise = null;
@@ -1107,6 +1138,7 @@ let currentDeck = null;
 let leaderPhotos = {};
 let cardPhotos = {};
 let cardNames = {};
+let leaderStats = {};
 let tournaments = [];
 let torneoDraft = null;
 let torneoConfirmPending = false;
@@ -1399,6 +1431,27 @@ async function saveCardNames() {
     await idbSet(CARD_NAMES_KEY, cardNames);
   } catch (e) {
     showToast('No se pudo guardar el nombre en el telefono');
+  }
+}
+
+// Poder/vidas/habilidad del lider: igual que cardNames, keyed por nombre
+// de lider, compartido entre todos los mazos que usan ese lider.
+async function loadLeaderStats() {
+  if (!HAS_STORAGE) return {};
+  try {
+    const parsed = await idbGet(LEADER_STATS_KEY);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+async function saveLeaderStats() {
+  if (!HAS_STORAGE) return;
+  try {
+    await idbSet(LEADER_STATS_KEY, leaderStats);
+  } catch (e) {
+    showToast('No se pudo guardar el dato del lider en el telefono');
   }
 }
 
@@ -1892,6 +1945,7 @@ decks = await loadDecks();
 leaderPhotos = await loadLeaderPhotos();
 cardPhotos = await loadCardPhotos();
 cardNames = await loadCardNames();
+leaderStats = await loadLeaderStats();
 leaders = await loadLeaders();
 matches = await loadMatches();
 leaderColors = await loadLeaderColors();
@@ -2731,6 +2785,67 @@ cardPhotoInput.addEventListener('change', async (e) => {
   }
 });
 
+// Poder/vidas/habilidad del lider activo: igual que la foto, hand-typed
+// una vez y compartido por todos los mazos que usan ese lider. Opcional,
+// no bloquea guardar el mazo.
+function leaderStatField(label, value, onEdit) {
+  const box = document.createElement('div');
+  box.className = 'ld-stat';
+  box.setAttribute('role', 'button');
+  box.title = value ? 'Editar ' + label.toLowerCase() : 'Anadir ' + label.toLowerCase();
+  box.innerHTML =
+    '<p class="ld-num' + (value ? '' : ' empty') + '">' + escapeHtml(value || ('+ ' + label.toLowerCase())) + '</p>' +
+    '<p class="ld-lab">' + label + '</p>';
+  box.addEventListener('click', onEdit);
+  return box;
+}
+
+function renderLeaderStats() {
+  const statsBox = document.getElementById('leader-stats-box');
+  const abilityBox = document.getElementById('leader-ability-box');
+  statsBox.innerHTML = '';
+  const stats = leaderStats[currentDeck.leader] || {};
+
+  statsBox.appendChild(leaderStatField('Poder', stats.poder, () => {
+    const input = window.prompt('Poder de ' + currentDeck.leader + ':', stats.poder || '');
+    if (input === null) return;
+    const trimmed = input.trim();
+    leaderStats[currentDeck.leader] = leaderStats[currentDeck.leader] || {};
+    if (trimmed) leaderStats[currentDeck.leader].poder = trimmed;
+    else delete leaderStats[currentDeck.leader].poder;
+    saveLeaderStats();
+    renderLeaderStats();
+  }));
+  statsBox.appendChild(leaderStatField('Vidas', stats.vidas, () => {
+    const input = window.prompt('Vidas de ' + currentDeck.leader + ':', stats.vidas || '');
+    if (input === null) return;
+    const trimmed = input.trim();
+    leaderStats[currentDeck.leader] = leaderStats[currentDeck.leader] || {};
+    if (trimmed) leaderStats[currentDeck.leader].vidas = trimmed;
+    else delete leaderStats[currentDeck.leader].vidas;
+    saveLeaderStats();
+    renderLeaderStats();
+  }));
+
+  abilityBox.innerHTML = '';
+  const ability = document.createElement('div');
+  ability.className = 'ld-ability' + (stats.habilidad ? '' : ' empty');
+  ability.textContent = stats.habilidad || '+ anadir habilidad del lider';
+  ability.setAttribute('role', 'button');
+  ability.title = stats.habilidad ? 'Editar habilidad' : 'Anadir habilidad';
+  ability.addEventListener('click', () => {
+    const input = window.prompt('Habilidad de ' + currentDeck.leader + ':', stats.habilidad || '');
+    if (input === null) return;
+    const trimmed = input.trim();
+    leaderStats[currentDeck.leader] = leaderStats[currentDeck.leader] || {};
+    if (trimmed) leaderStats[currentDeck.leader].habilidad = trimmed;
+    else delete leaderStats[currentDeck.leader].habilidad;
+    saveLeaderStats();
+    renderLeaderStats();
+  });
+  abilityBox.appendChild(ability);
+}
+
 // A hand-typed, optional label per card code (e.g. "OP01-016" -> "Monkey
 // D. Luffy"), shown under the code to make the list easier to read at a
 // glance. Shared across every deck, same as the photo - naming a card
@@ -2871,6 +2986,7 @@ function syncMazosToLeader(name) {
     deckError.style.display = 'none';
     renderDeckLiderSelect();
     renderDeckColorChips();
+    renderLeaderStats();
     renderDeckCardsList();
     renderLeaderPhoto();
     renderDeckChips();
@@ -2883,6 +2999,7 @@ function loadDeckIntoForm(d) {
   deckError.style.display = 'none';
   renderDeckLiderSelect();
   renderDeckColorChips();
+  renderLeaderStats();
   renderDeckCardsList();
   renderLeaderPhoto();
   renderDeckChips();
@@ -2894,6 +3011,7 @@ function startNewDeck() {
   deckError.style.display = 'none';
   renderDeckLiderSelect();
   renderDeckColorChips();
+  renderLeaderStats();
   renderDeckCardsList();
   renderLeaderPhoto();
   renderDeckChips();
@@ -3293,6 +3411,7 @@ currentDeck = newDeckDraft();
 renderDeckChips();
 renderDeckLiderSelect();
 renderDeckColorChips();
+renderLeaderStats();
 renderDeckCardsList();
 renderLeaderPhoto();
 
