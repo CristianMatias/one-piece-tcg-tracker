@@ -621,7 +621,7 @@
   .tab-mazos { display: none; }
 
   @media (min-width: 1200px) {
-    .wrap { max-width: 1440px; padding: 28px 24px 48px; }
+    .wrap { max-width: 1800px; padding: 28px 24px 48px; }
     h1 { font-size: 22px; }
     .nav-tabs { display: none; }
     .tab-registro, .tab-mazos { display: block !important; }
@@ -2159,6 +2159,7 @@ document.getElementById('save-btn').addEventListener('click', () => {
 
   selectedRival = '';
   renderRivalSelect();
+  renderLeaderPreview();
   selections.turno = null;
   selections.mano = null;
   selections.resultado = null;
