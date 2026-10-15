@@ -120,12 +120,14 @@
   <div class="page-intro">
     <h1>Mockup — Habilidad del lider (columna Mazo)</h1>
     <p>
-      Propuesta para rellenar el hueco entre "Colores del mazo" y "Cartas del mazo".
-      Tres datos del lider, escritos a mano una vez y compartidos entre todos los mazos
-      que usan ese lider (mismo patron que la foto y el nombre de carta): <b>Poder</b> y
-      <b>Vidas</b> como dos cifras, y <b>Habilidad</b> como texto libre debajo. Se tocan
-      para editar, igual que "+ nombre" en las cartas. Nada de esto esta conectado a
-      ningun codigo todavia, es solo para revisar el sitio y el tamano antes de implementarlo.
+      Fila superior igual que en la app (Lider/Nombre/Colores a la izquierda, Foto del
+      lider a la derecha). Debajo, la propuesta para rellenar el hueco entre "Colores
+      del mazo" y "Cartas del mazo": tres datos del lider, escritos a mano una vez y
+      compartidos entre todos los mazos que usan ese lider (mismo patron que la foto y
+      el nombre de carta): <b>Poder</b> y <b>Vidas</b> como dos cifras, y <b>Habilidad</b>
+      como texto libre debajo. Se tocan para editar, igual que "+ nombre" en las cartas.
+      Nada de esto esta conectado a ningun codigo todavia, es solo para revisar el sitio
+      y el tamano antes de implementarlo.
     </p>
   </div>
 
@@ -133,18 +135,34 @@
     <div class="mock-col">
       <p class="mock-label">Estado: datos ya cargados</p>
       <div class="card">
-        <p class="label">Lider del mazo</p>
-        <p style="font-size:14px; font-weight:600; margin:0 0 10px;">Luffy Elbaf (barco) B</p>
+        <div style="display:flex; gap:14px; align-items:flex-start;">
+          <div style="flex:1; min-width:0;">
+            <p class="label">Lider del mazo</p>
+            <p style="font-size:14px; font-weight:600; margin:0 0 10px;">Luffy Elbaf (barco) B</p>
 
-        <div class="section-gap">
-          <p class="label">Nombre del mazo (opcional)</p>
-          <div style="padding:10px 12px; border-radius:var(--radius); border:1.5px solid var(--border); background:var(--bg); font-size:14px;">Version Barco</div>
-        </div>
+            <div class="section-gap">
+              <p class="label">Nombre del mazo (opcional)</p>
+              <div style="padding:10px 12px; border-radius:var(--radius); border:1.5px solid var(--border); background:var(--bg); font-size:14px;">Version Barco</div>
+            </div>
 
-        <div class="section-gap">
-          <p class="label">Colores del mazo</p>
-          <div style="display:flex; gap:8px;">
-            <div class="modal-btn" style="border-color:var(--accent); background:var(--accent-tint); color:var(--accent-text); padding:7px 14px; border-radius:999px;">B</div>
+            <div class="section-gap">
+              <p class="label">Colores del mazo</p>
+              <div style="display:flex; gap:8px;">
+                <div class="modal-btn" style="border-color:var(--accent); background:var(--accent-tint); color:var(--accent-text); padding:7px 14px; border-radius:999px;">B</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="width:190px; flex-shrink:0;">
+            <p class="label">Foto del lider</p>
+            <div style="width:100%; aspect-ratio:5/7; border-radius:var(--radius); border:1px solid var(--border); background:var(--bg); display:flex; align-items:center; justify-content:center; overflow:hidden;">
+              <svg viewBox="0 0 70 98" style="width:40%; height:40%;" xmlns="http://www.w3.org/2000/svg">
+                <ellipse cx="35" cy="34" rx="22" ry="20" fill="none" stroke="var(--text-muted)" stroke-width="4"/>
+                <ellipse cx="35" cy="30" rx="30" ry="7" fill="none" stroke="var(--text-muted)" stroke-width="4"/>
+                <path d="M20 30 Q20 12 35 12 Q50 12 50 30" fill="var(--bg)" stroke="var(--text-muted)" stroke-width="4"/>
+                <rect x="20" y="24" width="30" height="6" fill="var(--accent)"/>
+              </svg>
+            </div>
           </div>
         </div>
 
@@ -183,18 +201,34 @@
     <div class="mock-col">
       <p class="mock-label">Estado: sin rellenar todavia</p>
       <div class="card">
-        <p class="label">Lider del mazo</p>
-        <p style="font-size:14px; font-weight:600; margin:0 0 10px;">Shanks Y</p>
+        <div style="display:flex; gap:14px; align-items:flex-start;">
+          <div style="flex:1; min-width:0;">
+            <p class="label">Lider del mazo</p>
+            <p style="font-size:14px; font-weight:600; margin:0 0 10px;">Shanks Y</p>
 
-        <div class="section-gap">
-          <p class="label">Nombre del mazo (opcional)</p>
-          <div style="padding:10px 12px; border-radius:var(--radius); border:1.5px solid var(--border); background:var(--bg); font-size:14px; color:var(--text-muted);">ej. UP control torneo</div>
-        </div>
+            <div class="section-gap">
+              <p class="label">Nombre del mazo (opcional)</p>
+              <div style="padding:10px 12px; border-radius:var(--radius); border:1.5px solid var(--border); background:var(--bg); font-size:14px; color:var(--text-muted);">ej. UP control torneo</div>
+            </div>
 
-        <div class="section-gap">
-          <p class="label">Colores del mazo</p>
-          <div style="display:flex; gap:8px;">
-            <div class="modal-btn" style="border-color:var(--accent); background:var(--accent-tint); color:var(--accent-text); padding:7px 14px; border-radius:999px;">Y</div>
+            <div class="section-gap">
+              <p class="label">Colores del mazo</p>
+              <div style="display:flex; gap:8px;">
+                <div class="modal-btn" style="border-color:var(--accent); background:var(--accent-tint); color:var(--accent-text); padding:7px 14px; border-radius:999px;">Y</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="width:190px; flex-shrink:0;">
+            <p class="label">Foto del lider</p>
+            <div style="width:100%; aspect-ratio:5/7; border-radius:var(--radius); border:1px dashed var(--border); background:var(--bg); display:flex; align-items:center; justify-content:center; overflow:hidden; cursor:pointer;">
+              <svg viewBox="0 0 70 98" style="width:40%; height:40%;" xmlns="http://www.w3.org/2000/svg">
+                <ellipse cx="35" cy="34" rx="22" ry="20" fill="none" stroke="var(--text-muted)" stroke-width="4"/>
+                <ellipse cx="35" cy="30" rx="30" ry="7" fill="none" stroke="var(--text-muted)" stroke-width="4"/>
+                <path d="M20 30 Q20 12 35 12 Q50 12 50 30" fill="var(--bg)" stroke="var(--text-muted)" stroke-width="4"/>
+                <rect x="20" y="24" width="30" height="6" fill="var(--accent)"/>
+              </svg>
+            </div>
           </div>
         </div>
 
