@@ -232,6 +232,7 @@
     word-break: break-word;
   }
   .ld-ability.empty { color: var(--text-muted); font-style: italic; }
+  .ld-keyword { color: var(--accent-text); font-weight: 600; }
   .card-cell .cell-qty {
     font-size: 14px;
     font-weight: 700;
@@ -983,6 +984,18 @@
     <p style="font-size:10.5px; color:var(--text-muted); margin:-4px 0 8px;">1x por linea</p>
     <textarea id="deck-bulk-input" rows="6" placeholder="1xOP01-016&#10;2xOP03-002&#10;4xOP01-025"></textarea>
     <button class="modal-btn primary" id="deck-load-list-btn" type="button" style="width:100%; margin-top:8px;">Cargar lista</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="leader-ability-overlay">
+  <div class="modal-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <p class="modal-title" style="margin:0;">Habilidad del lider</p>
+      <button class="modal-btn" id="leader-ability-close" type="button">Cerrar</button>
+    </div>
+    <p style="font-size:10.5px; color:var(--text-muted); margin:-4px 0 8px;">Usa &lt;Palabra&gt; para resaltar palabras clave (Rush, Blocker, Don...)</p>
+    <textarea id="leader-ability-input" rows="6" placeholder="[On Your Turn] All of your Characters with a cost of 2 or more gain &lt;Rush&gt;."></textarea>
+    <button class="modal-btn primary" id="leader-ability-save-btn" type="button" style="width:100%; margin-top:8px;">Guardar</button>
   </div>
 </div>
 
@@ -2830,21 +2843,47 @@ function renderLeaderStats() {
   abilityBox.innerHTML = '';
   const ability = document.createElement('div');
   ability.className = 'ld-ability' + (stats.habilidad ? '' : ' empty');
-  ability.textContent = stats.habilidad || '+ anadir habilidad del lider';
+  ability.innerHTML = stats.habilidad ? abilityHtml(stats.habilidad) : escapeHtml('+ anadir habilidad del lider');
   ability.setAttribute('role', 'button');
   ability.title = stats.habilidad ? 'Editar habilidad' : 'Anadir habilidad';
-  ability.addEventListener('click', () => {
-    const input = window.prompt('Habilidad de ' + currentDeck.leader + ':', stats.habilidad || '');
-    if (input === null) return;
-    const trimmed = input.trim();
-    leaderStats[currentDeck.leader] = leaderStats[currentDeck.leader] || {};
-    if (trimmed) leaderStats[currentDeck.leader].habilidad = trimmed;
-    else delete leaderStats[currentDeck.leader].habilidad;
-    saveLeaderStats();
-    renderLeaderStats();
-  });
+  ability.addEventListener('click', () => openLeaderAbilityModal());
   abilityBox.appendChild(ability);
 }
+
+// Resalta las palabras clave del juego escritas como "<Rush>", "<Blocker>",
+// etc. - se mantiene el texto escapado (sin permitir HTML del usuario) y
+// solo se envuelve en un span lo que cae entre "<" y ">".
+function abilityHtml(text) {
+  return text.split(/(<[^<>\n]+>)/g).map(part => {
+    if (/^<[^<>\n]+>$/.test(part)) {
+      return '<span class="ld-keyword">' + escapeHtml(part) + '</span>';
+    }
+    return escapeHtml(part);
+  }).join('');
+}
+
+const leaderAbilityOverlay = document.getElementById('leader-ability-overlay');
+const leaderAbilityInput = document.getElementById('leader-ability-input');
+const leaderAbilityCloseBtn = document.getElementById('leader-ability-close');
+const leaderAbilitySaveBtn = document.getElementById('leader-ability-save-btn');
+
+function openLeaderAbilityModal() {
+  leaderAbilityInput.value = (leaderStats[currentDeck.leader] || {}).habilidad || '';
+  leaderAbilityOverlay.classList.add('show');
+}
+leaderAbilityCloseBtn.addEventListener('click', () => leaderAbilityOverlay.classList.remove('show'));
+leaderAbilityOverlay.addEventListener('click', (e) => {
+  if (e.target === leaderAbilityOverlay) leaderAbilityOverlay.classList.remove('show');
+});
+leaderAbilitySaveBtn.addEventListener('click', () => {
+  const trimmed = leaderAbilityInput.value.trim();
+  leaderStats[currentDeck.leader] = leaderStats[currentDeck.leader] || {};
+  if (trimmed) leaderStats[currentDeck.leader].habilidad = trimmed;
+  else delete leaderStats[currentDeck.leader].habilidad;
+  saveLeaderStats();
+  renderLeaderStats();
+  leaderAbilityOverlay.classList.remove('show');
+});
 
 // A hand-typed, optional label per card code (e.g. "OP01-016" -> "Monkey
 // D. Luffy"), shown under the code to make the list easier to read at a
