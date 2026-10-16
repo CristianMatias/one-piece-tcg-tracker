@@ -806,7 +806,10 @@
     <div style="display:flex; gap:14px; align-items:flex-start;">
       <div style="flex:1; min-width:0;">
         <p class="label">Lider del mazo</p>
-        <p id="deck-leader-display" style="font-size:14px; font-weight:600; margin:0 0 10px;">-</p>
+        <div style="display:flex; align-items:center; gap:4px; margin:0 0 10px;">
+          <p id="deck-leader-display" style="font-size:14px; font-weight:600; margin:0;">-</p>
+          <button class="rename-leader-btn" id="deck-rename-leader-btn" type="button" title="Renombrar lider"></button>
+        </div>
 
         <div class="section-gap">
           <p class="label">Nombre del mazo (opcional)</p>
@@ -1248,6 +1251,14 @@ const colorsOverlay = document.getElementById('colors-overlay');
 const colorsList = document.getElementById('colors-list');
 const colorsClose = document.getElementById('colors-close');
 const deckLeaderDisplay = document.getElementById('deck-leader-display');
+const deckRenameLeaderBtn = document.getElementById('deck-rename-leader-btn');
+deckRenameLeaderBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+deckRenameLeaderBtn.addEventListener('click', () => {
+  if (!currentDeck.leader) return;
+  const input = window.prompt('Nuevo nombre para "' + currentDeck.leader + '":', currentDeck.leader);
+  if (input === null) return;
+  renameLeader(currentDeck.leader, input.trim());
+});
 const deckNameInput = document.getElementById('deck-name-input');
 const deckBulkInput = document.getElementById('deck-bulk-input');
 const deckLoadListBtn = document.getElementById('deck-load-list-btn');
@@ -2684,6 +2695,7 @@ function renderDeckChips() {
 
 function renderDeckLiderSelect() {
   deckLeaderDisplay.textContent = currentDeck.leader || '-';
+  deckRenameLeaderBtn.style.display = currentDeck.leader ? '' : 'none';
 }
 
 function renderDeckColorChips() {
