@@ -211,12 +211,24 @@
   }
   .ld-stats { display: flex; flex-direction: column; gap: 8px; }
   .ld-stat {
+    position: relative;
     flex: 1;
     background: var(--bg);
     border-radius: var(--radius);
     padding: 9px 8px;
     text-align: center;
     cursor: pointer;
+    overflow: hidden;
+  }
+  .ld-stat-fill {
+    position: absolute;
+    inset: 0;
+    animation: ld-fill-in .45s ease;
+  }
+  .ld-stat-content { position: relative; z-index: 1; }
+  @keyframes ld-fill-in {
+    from { clip-path: inset(0 100% 0 0); }
+    to { clip-path: inset(0 0 0 0); }
   }
   .ld-stat .ld-num { font-size: 18px; font-weight: 600; margin: 0; }
   .ld-stat .ld-num.empty { color: var(--text-muted); font-style: italic; font-size: 13px; }
@@ -583,6 +595,16 @@
   }
   .color-row:last-child { border-bottom: none; }
   .color-row-name { font-size: 13px; flex: 1; }
+  .rename-leader-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 6px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .rename-leader-btn:hover { color: var(--accent); }
   .color-row-chips { display: flex; gap: 5px; flex-shrink: 0; }
   .color-chip {
     width: 26px;
@@ -968,7 +990,7 @@
   <div class="modal-card">
     <p class="modal-title">Colores de lideres</p>
     <p style="font-size:11.5px; color:var(--text-muted); margin:-6px 0 10px;">
-      Se detectan solo por las ultimas letras del nombre. Toca un color para asignarlo o quitarlo (maximo 2). B=Negro U=Azul Y=Amarillo R=Rojo G=Verde P=Purpura. Toca el nombre del lider para renombrarlo (sin perder partidas, mazos ni fotos).
+      Se detectan solo por las ultimas letras del nombre. Toca un color para asignarlo o quitarlo (maximo 2). B=Negro U=Azul Y=Amarillo R=Rojo G=Verde P=Purpura. Toca el lapiz (&#9998;) para renombrar un lider (sin perder partidas, mazos ni fotos).
     </p>
     <div class="colors-list" id="colors-list"></div>
     <button class="modal-btn primary" id="colors-close" type="button">Cerrar</button>
@@ -1145,7 +1167,17 @@ const COLOR_NAMES = { B: 'Negro', U: 'Azul', Y: 'Amarillo', R: 'Rojo', G: 'Verde
 // Mismos tonos que .color-chip/.color-badge, reutilizados para pintar las
 // cajas de Poder/Vidas del color (o colores) del lider.
 const COLOR_HEX = { B: '#2b2b2b', U: '#2f6fed', Y: '#e8b93b', R: 'var(--accent)', G: '#2f8f4e', P: '#7a3fa0' };
+// En modo oscuro, el "Negro" (#2b2b2b) queda casi igual que el fondo de la
+// app (--bg: #16140f / --card: #201d17) y se ve como si no tuviera color.
+// Se usa un gris mas claro solo para ese caso.
+const COLOR_HEX_B_DARK = '#55504a';
 const COLOR_ON_TEXT = { B: '#fff', U: '#fff', Y: '#241c04', R: '#fff', G: '#fff', P: '#fff' };
+function colorHex(letter) {
+  if (letter === 'B' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return COLOR_HEX_B_DARK;
+  }
+  return COLOR_HEX[letter];
+}
 
 let leaders = [];
 let matches = [];
@@ -2092,14 +2124,20 @@ function renderColorsList() {
     const label = document.createElement('span');
     label.className = 'color-row-name';
     label.textContent = name;
-    label.style.cursor = 'pointer';
-    label.title = 'Tocar para renombrar';
-    label.addEventListener('click', () => {
+    row.appendChild(label);
+
+    const renameBtn = document.createElement('button');
+    renameBtn.type = 'button';
+    renameBtn.className = 'rename-leader-btn';
+    renameBtn.textContent = '✎';
+    renameBtn.title = 'Renombrar lider';
+    renameBtn.setAttribute('aria-label', 'Renombrar ' + name);
+    renameBtn.addEventListener('click', () => {
       const input = window.prompt('Nuevo nombre para "' + name + '":', name);
       if (input === null) return;
       renameLeader(name, input.trim());
     });
-    row.appendChild(label);
+    row.appendChild(renameBtn);
 
     const chips = document.createElement('div');
     chips.className = 'color-row-chips';
@@ -2879,26 +2917,40 @@ function leaderStatField(label, value, onEdit, colorStyle) {
   box.className = 'ld-stat';
   box.setAttribute('role', 'button');
   box.title = value ? 'Editar ' + label.toLowerCase() : 'Anadir ' + label.toLowerCase();
-  if (colorStyle) box.style.cssText += colorStyle;
-  const textStyle = colorStyle ? ' style="color:inherit;"' : '';
-  box.innerHTML +=
-    '<p class="ld-num' + (value ? '' : ' empty') + '"' + textStyle + '>' + escapeHtml(value || ('+ ' + label.toLowerCase())) + '</p>' +
-    '<p class="ld-lab"' + textStyle + '>' + label + '</p>';
+
+  if (colorStyle) {
+    // El color vive en una capa aparte (en vez de en el fondo de la caja)
+    // para poder animar su entrada con un "wipe" cada vez que se recrea -
+    // ocurre justo al cambiar de lider, asi se ve como si se rellenara.
+    const fill = document.createElement('div');
+    fill.className = 'ld-stat-fill';
+    fill.style.background = colorStyle.bg;
+    box.appendChild(fill);
+  }
+
+  const content = document.createElement('div');
+  content.className = 'ld-stat-content';
+  if (colorStyle) content.style.color = colorStyle.color;
+  content.innerHTML =
+    '<p class="ld-num' + (value ? '' : ' empty') + '">' + escapeHtml(value || ('+ ' + label.toLowerCase())) + '</p>' +
+    '<p class="ld-lab">' + label + '</p>';
+  box.appendChild(content);
+
   box.addEventListener('click', onEdit);
   return box;
 }
 
-// Fondo de las cajas Poder/Vidas segun el color (o colores) del lider:
+// Color de las cajas Poder/Vidas segun el color (o colores) del lider:
 // un color -> relleno solido; dos colores -> mitad y mitad en diagonal.
-// Sin colores asignados, se queda con el fondo neutro de siempre.
+// Sin colores asignados, se queda con el fondo neutro de siempre (null).
 function leaderColorBoxStyle(colors) {
   if (!colors.length) return null;
   if (colors.length === 1) {
-    return 'background:' + COLOR_HEX[colors[0]] + ';color:' + COLOR_ON_TEXT[colors[0]] + ';';
+    return { bg: colorHex(colors[0]), color: COLOR_ON_TEXT[colors[0]] };
   }
   const [a, b] = colors;
   const textColor = (a === 'Y' || b === 'Y') ? COLOR_ON_TEXT.Y : '#fff';
-  return 'background:linear-gradient(135deg,' + COLOR_HEX[a] + ' 50%,' + COLOR_HEX[b] + ' 50%);color:' + textColor + ';';
+  return { bg: 'linear-gradient(135deg,' + colorHex(a) + ' 50%,' + colorHex(b) + ' 50%)', color: textColor };
 }
 
 // Poder/Vidas solo aceptan numeros enteros (sin signo, sin decimales -
