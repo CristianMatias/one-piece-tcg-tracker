@@ -209,6 +209,52 @@
     color: var(--text-muted);
     font-style: italic;
   }
+  .ld-stats { display: flex; flex-direction: column; gap: 8px; }
+  .ld-stat {
+    position: relative;
+    flex: 1;
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 9px 8px;
+    text-align: center;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .ld-stat-fill { position: absolute; inset: 0; }
+  .ld-stat-fill-solid { animation: ld-fill-in .45s ease; }
+  /* Triangulos diagonales (misma particion que el linear-gradient 135deg
+     original) que ademas entran deslizando desde su lado respectivo. */
+  .ld-stat-fill-a { clip-path: polygon(0 0, 100% 0, 0 100%); animation: ld-fill-left .45s ease; }
+  .ld-stat-fill-b { clip-path: polygon(100% 0, 100% 100%, 0 100%); animation: ld-fill-right .45s ease; }
+  .ld-stat-content { position: relative; z-index: 1; }
+  @keyframes ld-fill-in {
+    from { clip-path: inset(0 100% 0 0); }
+    to { clip-path: inset(0 0 0 0); }
+  }
+  @keyframes ld-fill-left {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes ld-fill-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  .ld-stat .ld-num { font-size: 18px; font-weight: 600; margin: 0; color: inherit; }
+  .ld-stat .ld-num.empty { color: var(--text-muted); font-style: italic; font-size: 13px; }
+  .ld-stat .ld-lab { font-size: 10px; color: var(--text-muted); margin: 2px 0 0; }
+  .ld-stat-content[style*="color"] .ld-lab { color: inherit; opacity: .85; }
+  .ld-ability {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 9px 11px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    cursor: pointer;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .ld-ability.empty { color: var(--text-muted); font-style: italic; }
+  .ld-keyword { color: var(--accent-text); font-weight: 600; }
   .card-cell .cell-qty {
     font-size: 14px;
     font-weight: 700;
@@ -559,6 +605,19 @@
   }
   .color-row:last-child { border-bottom: none; }
   .color-row-name { font-size: 13px; flex: 1; }
+  .rename-leader-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: 6px;
+    line-height: 1;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .rename-leader-btn:hover { color: var(--accent); }
   .color-row-chips { display: flex; gap: 5px; flex-shrink: 0; }
   .color-chip {
     width: 26px;
@@ -747,7 +806,10 @@
     <div style="display:flex; gap:14px; align-items:flex-start;">
       <div style="flex:1; min-width:0;">
         <p class="label">Lider del mazo</p>
-        <p id="deck-leader-display" style="font-size:14px; font-weight:600; margin:0 0 10px;">-</p>
+        <div style="display:flex; align-items:center; gap:4px; margin:0 0 10px;">
+          <p id="deck-leader-display" style="font-size:14px; font-weight:600; margin:0;">-</p>
+          <button class="rename-leader-btn" id="deck-rename-leader-btn" type="button" title="Renombrar lider"></button>
+        </div>
 
         <div class="section-gap">
           <p class="label">Nombre del mazo (opcional)</p>
@@ -758,6 +820,8 @@
           <p class="label">Colores del mazo</p>
           <div style="display:flex; gap:8px;" id="deck-color-chips"></div>
         </div>
+
+        <div class="section-gap ld-stats" id="leader-stats-box"></div>
       </div>
 
       <div style="width:190px; flex-shrink:0;">
@@ -767,6 +831,11 @@
       </div>
     </div>
     <input type="file" id="card-photo-input" accept="image/*" style="display:none;" />
+
+    <div class="section-gap">
+      <p class="label">Habilidad del lider</p>
+      <div id="leader-ability-box"></div>
+    </div>
 
     <div class="section-gap">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:8px;">
@@ -937,7 +1006,7 @@
   <div class="modal-card">
     <p class="modal-title">Colores de lideres</p>
     <p style="font-size:11.5px; color:var(--text-muted); margin:-6px 0 10px;">
-      Se detectan solo por las ultimas letras del nombre. Toca un color para asignarlo o quitarlo (maximo 2). B=Negro U=Azul Y=Amarillo R=Rojo G=Verde P=Purpura.
+      Se detectan solo por las ultimas letras del nombre. Toca un color para asignarlo o quitarlo (maximo 2). B=Negro U=Azul Y=Amarillo R=Rojo G=Verde P=Purpura. Toca el icono de lapiz junto al nombre para renombrar un lider (sin perder partidas, mazos ni fotos).
     </p>
     <div class="colors-list" id="colors-list"></div>
     <button class="modal-btn primary" id="colors-close" type="button">Cerrar</button>
@@ -953,6 +1022,18 @@
     <p style="font-size:10.5px; color:var(--text-muted); margin:-4px 0 8px;">1x por linea</p>
     <textarea id="deck-bulk-input" rows="6" placeholder="1xOP01-016&#10;2xOP03-002&#10;4xOP01-025"></textarea>
     <button class="modal-btn primary" id="deck-load-list-btn" type="button" style="width:100%; margin-top:8px;">Cargar lista</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="leader-ability-overlay">
+  <div class="modal-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <p class="modal-title" style="margin:0;">Habilidad del lider</p>
+      <button class="modal-btn" id="leader-ability-close" type="button">Cerrar</button>
+    </div>
+    <p style="font-size:10.5px; color:var(--text-muted); margin:-4px 0 8px;">Usa &lt;Palabra&gt; para resaltar palabras clave (Rush, Blocker, Don...)</p>
+    <textarea id="leader-ability-input" rows="6" placeholder="[On Your Turn] All of your Characters with a cost of 2 or more gain &lt;Rush&gt;."></textarea>
+    <button class="modal-btn primary" id="leader-ability-save-btn" type="button" style="width:100%; margin-top:8px;">Guardar</button>
   </div>
 </div>
 
@@ -975,6 +1056,7 @@ const LEADER_PHOTOS_KEY = 'op_tcg_leader_photos';
 const TOURNAMENTS_KEY = 'op_tcg_tournaments';
 const CARD_PHOTOS_KEY = 'op_tcg_card_photos';
 const CARD_NAMES_KEY = 'op_tcg_card_names';
+const LEADER_STATS_KEY = 'op_tcg_leader_stats';
 
 // --- IndexedDB storage layer ---
 // All app data (leaders, matches, decks, colors, photos, tournaments) lives
@@ -988,7 +1070,7 @@ const DB_VERSION = 1;
 const ALL_STORAGE_KEYS = [
   LEADERS_KEY, LEGACY_RIVAL_LEADERS_KEY, MATCHES_KEY,
   LEADER_COLORS_KEY, DECKS_KEY, LEADER_PHOTOS_KEY, TOURNAMENTS_KEY,
-  CARD_PHOTOS_KEY, CARD_NAMES_KEY
+  CARD_PHOTOS_KEY, CARD_NAMES_KEY, LEADER_STATS_KEY
 ];
 
 let dbPromise = null;
@@ -1098,8 +1180,25 @@ function deckTotalCards() {
 const ADD_OPTION = '__add__';
 const COLOR_LETTERS = ['B', 'U', 'Y', 'R', 'G', 'P'];
 const COLOR_NAMES = { B: 'Negro', U: 'Azul', Y: 'Amarillo', R: 'Rojo', G: 'Verde', P: 'Purpura' };
+// Mismos tonos que .color-chip/.color-badge, reutilizados para pintar las
+// cajas de Poder/Vidas del color (o colores) del lider.
+const COLOR_HEX = { B: '#2b2b2b', U: '#2f6fed', Y: '#e8b93b', R: 'var(--accent)', G: '#2f8f4e', P: '#7a3fa0' };
+// En modo oscuro, el "Negro" (#2b2b2b) queda casi igual que el fondo de la
+// app (--bg: #16140f / --card: #201d17) y se ve como si no tuviera color.
+// Se usa un gris mas claro solo para ese caso.
+const COLOR_HEX_B_DARK = '#55504a';
+const COLOR_ON_TEXT = { B: '#fff', U: '#fff', Y: '#241c04', R: '#fff', G: '#fff', P: '#fff' };
+function colorHex(letter) {
+  if (letter === 'B' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return COLOR_HEX_B_DARK;
+  }
+  return COLOR_HEX[letter];
+}
 
 let leaders = [];
+function sortedLeaders() {
+  return leaders.slice().sort((a, b) => a.localeCompare(b, 'es'));
+}
 let matches = [];
 let leaderColors = {};
 let decks = [];
@@ -1107,6 +1206,7 @@ let currentDeck = null;
 let leaderPhotos = {};
 let cardPhotos = {};
 let cardNames = {};
+let leaderStats = {};
 let tournaments = [];
 let torneoDraft = null;
 let torneoConfirmPending = false;
@@ -1151,6 +1251,14 @@ const colorsOverlay = document.getElementById('colors-overlay');
 const colorsList = document.getElementById('colors-list');
 const colorsClose = document.getElementById('colors-close');
 const deckLeaderDisplay = document.getElementById('deck-leader-display');
+const deckRenameLeaderBtn = document.getElementById('deck-rename-leader-btn');
+deckRenameLeaderBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+deckRenameLeaderBtn.addEventListener('click', () => {
+  if (!currentDeck.leader) return;
+  const input = window.prompt('Nuevo nombre para "' + currentDeck.leader + '":', currentDeck.leader);
+  if (input === null) return;
+  renameLeader(currentDeck.leader, input.trim());
+});
 const deckNameInput = document.getElementById('deck-name-input');
 const deckBulkInput = document.getElementById('deck-bulk-input');
 const deckLoadListBtn = document.getElementById('deck-load-list-btn');
@@ -1399,6 +1507,27 @@ async function saveCardNames() {
     await idbSet(CARD_NAMES_KEY, cardNames);
   } catch (e) {
     showToast('No se pudo guardar el nombre en el telefono');
+  }
+}
+
+// Poder/vidas/habilidad del lider: igual que cardNames, keyed por nombre
+// de lider, compartido entre todos los mazos que usan ese lider.
+async function loadLeaderStats() {
+  if (!HAS_STORAGE) return {};
+  try {
+    const parsed = await idbGet(LEADER_STATS_KEY);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+async function saveLeaderStats() {
+  if (!HAS_STORAGE) return;
+  try {
+    await idbSet(LEADER_STATS_KEY, leaderStats);
+  } catch (e) {
+    showToast('No se pudo guardar el dato del lider en el telefono');
   }
 }
 
@@ -1729,8 +1858,8 @@ function createLeaderCombo(input, dropdown, selectEl) {
 
   function matchesFor(query) {
     const q = query.trim().toLowerCase();
-    if (!q) return leaders.slice();
-    return leaders.filter(name => leaderSearchText(name).includes(q));
+    if (!q) return sortedLeaders();
+    return sortedLeaders().filter(name => leaderSearchText(name).includes(q));
   }
 
   function setSelectValue(name) {
@@ -1758,9 +1887,9 @@ function createLeaderCombo(input, dropdown, selectEl) {
     dropdown.style.width = rect.width + 'px';
   }
 
-  function render() {
+  function render(showAll) {
     reposition();
-    const query = input.value;
+    const query = showAll ? '' : input.value;
     const matches = matchesFor(query);
     dropdown.innerHTML = '';
 
@@ -1796,7 +1925,8 @@ function createLeaderCombo(input, dropdown, selectEl) {
 
   input.addEventListener('focus', () => {
     highlight = 0;
-    render();
+    input.select(); // escribir reemplaza el nombre actual en vez de tener que borrarlo
+    render(true); // al entrar al campo, mostrar todos los lideres, no solo los que coinciden con el valor ya puesto
   });
   input.addEventListener('input', () => {
     highlight = 0;
@@ -1843,7 +1973,7 @@ function createLeaderCombo(input, dropdown, selectEl) {
 
 function renderMiLiderSelect() {
   miLiderSelect.innerHTML = '';
-  leaders.forEach(name => {
+  sortedLeaders().forEach(name => {
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = name;
@@ -1864,7 +1994,7 @@ function renderRivalSelect() {
   placeholder.value = '';
   placeholder.textContent = '-- Elige lider rival --';
   rivalSelect.appendChild(placeholder);
-  leaders.forEach(name => {
+  sortedLeaders().forEach(name => {
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = name;
@@ -1892,6 +2022,7 @@ decks = await loadDecks();
 leaderPhotos = await loadLeaderPhotos();
 cardPhotos = await loadCardPhotos();
 cardNames = await loadCardNames();
+leaderStats = await loadLeaderStats();
 leaders = await loadLeaders();
 matches = await loadMatches();
 leaderColors = await loadLeaderColors();
@@ -2013,7 +2144,7 @@ rivalSelect.addEventListener('change', (e) => {
 // --- Menu aparte: gestion de colores por lider ---
 function renderColorsList() {
   colorsList.innerHTML = '';
-  leaders.forEach(name => {
+  sortedLeaders().forEach(name => {
     const current = leaderColors[name] || [];
     const row = document.createElement('div');
     row.className = 'color-row';
@@ -2022,6 +2153,21 @@ function renderColorsList() {
     label.className = 'color-row-name';
     label.textContent = name;
     row.appendChild(label);
+
+    const renameBtn = document.createElement('button');
+    renameBtn.type = 'button';
+    renameBtn.className = 'rename-leader-btn';
+    // SVG en vez de un caracter Unicode (ej. "✎"): ese glifo no existe
+    // en varias fuentes del stack usado y el boton se veia en blanco.
+    renameBtn.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+    renameBtn.title = 'Renombrar lider';
+    renameBtn.setAttribute('aria-label', 'Renombrar ' + name);
+    renameBtn.addEventListener('click', () => {
+      const input = window.prompt('Nuevo nombre para "' + name + '":', name);
+      if (input === null) return;
+      renameLeader(name, input.trim());
+    });
+    row.appendChild(renameBtn);
 
     const chips = document.createElement('div');
     chips.className = 'color-row-chips';
@@ -2038,6 +2184,65 @@ function renderColorsList() {
     row.appendChild(chips);
     colorsList.appendChild(row);
   });
+}
+
+// Renombra un lider en todos los sitios donde su nombre vive como clave
+// o como valor de texto, para no perder nada (partidas, mazos, torneos,
+// colores, foto, poder/vidas/habilidad) al cambiarle el nombre.
+function renameLeader(oldName, newName) {
+  if (!newName || newName === oldName) return;
+  if (leaders.includes(newName)) {
+    showToast('Ya existe un lider con ese nombre');
+    return;
+  }
+
+  const idx = leaders.indexOf(oldName);
+  if (idx !== -1) leaders[idx] = newName;
+  saveLeaders();
+
+  matches.forEach(m => {
+    if (m.miLider === oldName) m.miLider = newName;
+    if (m.liderRival === oldName) m.liderRival = newName;
+  });
+  saveMatches();
+
+  decks.forEach(d => { if (d.leader === oldName) d.leader = newName; });
+  saveDecks();
+
+  tournaments.forEach(t => {
+    if (t.leader === oldName) t.leader = newName;
+    (t.rounds || []).forEach(r => { if (r.rival === oldName) r.rival = newName; });
+  });
+  saveTournaments();
+
+  [leaderColors, leaderPhotos, leaderStats].forEach((store) => {
+    if (store[oldName] !== undefined) {
+      store[newName] = store[oldName];
+      delete store[oldName];
+    }
+  });
+  saveLeaderColors();
+  saveLeaderPhotos();
+  saveLeaderStats();
+
+  if (selectedLeader === oldName) selectedLeader = newName;
+  if (selectedRival === oldName) selectedRival = newName;
+  if (currentDeck && currentDeck.leader === oldName) currentDeck.leader = newName;
+  if (torneoDraft && torneoDraft.leader === oldName) torneoDraft.leader = newName;
+
+  renderColorsList();
+  renderMiLiderSelect();
+  renderRivalSelect();
+  renderLeaderPreview();
+  updateStats(selectedLeader);
+  if (currentDeck) {
+    renderDeckLiderSelect();
+    renderDeckColorChips();
+    renderLeaderStats();
+    renderLeaderPhoto();
+  }
+  if (torneoDraft) renderTorneoLeaderSelect();
+  showToast('Lider renombrado');
 }
 
 function toggleLeaderColor(name, letter) {
@@ -2057,7 +2262,10 @@ function toggleLeaderColor(name, letter) {
   renderColorsList();
   renderMiLiderSelect();
   renderRivalSelect();
-  if (currentDeck) renderDeckLiderSelect();
+  if (currentDeck) {
+    renderDeckLiderSelect();
+    if (currentDeck.leader === name) renderLeaderStats();
+  }
   if (torneoDraft) renderTorneoLeaderSelect();
 }
 
@@ -2487,6 +2695,7 @@ function renderDeckChips() {
 
 function renderDeckLiderSelect() {
   deckLeaderDisplay.textContent = currentDeck.leader || '-';
+  deckRenameLeaderBtn.style.display = currentDeck.leader ? '' : 'none';
 }
 
 function renderDeckColorChips() {
@@ -2731,6 +2940,135 @@ cardPhotoInput.addEventListener('change', async (e) => {
   }
 });
 
+// Poder/vidas/habilidad del lider activo: igual que la foto, hand-typed
+// una vez y compartido por todos los mazos que usan ese lider. Opcional,
+// no bloquea guardar el mazo.
+function leaderStatField(label, value, onEdit, colorStyle) {
+  const box = document.createElement('div');
+  box.className = 'ld-stat';
+  box.setAttribute('role', 'button');
+  box.title = value ? 'Editar ' + label.toLowerCase() : 'Anadir ' + label.toLowerCase();
+
+  if (colorStyle) {
+    // El color vive en una capa aparte (en vez de en el fondo de la caja)
+    // para poder animarlo cada vez que se recrea - ocurre justo al cambiar
+    // de lider, asi se ve como si se rellenara.
+    if (colorStyle.mode === 'split') {
+      const left = document.createElement('div');
+      left.className = 'ld-stat-fill ld-stat-fill-a';
+      left.style.background = colorStyle.bgA;
+      const right = document.createElement('div');
+      right.className = 'ld-stat-fill ld-stat-fill-b';
+      right.style.background = colorStyle.bgB;
+      box.appendChild(left);
+      box.appendChild(right);
+    } else {
+      const fill = document.createElement('div');
+      fill.className = 'ld-stat-fill ld-stat-fill-solid';
+      fill.style.background = colorStyle.bg;
+      box.appendChild(fill);
+    }
+  }
+
+  const content = document.createElement('div');
+  content.className = 'ld-stat-content';
+  if (colorStyle) content.style.color = colorStyle.color;
+  content.innerHTML =
+    '<p class="ld-num' + (value ? '' : ' empty') + '">' + escapeHtml(value || ('+ ' + label.toLowerCase())) + '</p>' +
+    '<p class="ld-lab">' + label + '</p>';
+  box.appendChild(content);
+
+  box.addEventListener('click', onEdit);
+  return box;
+}
+
+// Color de las cajas Poder/Vidas segun el color (o colores) del lider:
+// un color -> relleno solido; dos colores -> mitad y mitad en diagonal.
+// Sin colores asignados, se queda con el fondo neutro de siempre (null).
+function leaderColorBoxStyle(colors) {
+  if (!colors.length) return null;
+  if (colors.length === 1) {
+    return { mode: 'solid', bg: colorHex(colors[0]), color: COLOR_ON_TEXT[colors[0]] };
+  }
+  const [a, b] = colors;
+  const textColor = (a === 'Y' || b === 'Y') ? COLOR_ON_TEXT.Y : '#fff';
+  return { mode: 'split', bgA: colorHex(a), bgB: colorHex(b), color: textColor };
+}
+
+// Poder/Vidas solo aceptan numeros enteros (sin signo, sin decimales -
+// es lo que imprime la carta). Reintenta hasta que el valor sea valido,
+// este vacio (borra el dato) o se cancele.
+function promptLeaderNumber(field, label, current) {
+  const input = window.prompt(label + ' de ' + currentDeck.leader + ':', current || '');
+  if (input === null) return;
+  const trimmed = input.trim();
+  if (trimmed && !/^\d+$/.test(trimmed)) {
+    showToast(label + ' debe ser un numero');
+    return;
+  }
+  leaderStats[currentDeck.leader] = leaderStats[currentDeck.leader] || {};
+  if (trimmed) leaderStats[currentDeck.leader][field] = trimmed;
+  else delete leaderStats[currentDeck.leader][field];
+  saveLeaderStats();
+  renderLeaderStats();
+}
+
+function renderLeaderStats() {
+  const statsBox = document.getElementById('leader-stats-box');
+  const abilityBox = document.getElementById('leader-ability-box');
+  statsBox.innerHTML = '';
+  const stats = leaderStats[currentDeck.leader] || {};
+  const colorStyle = leaderColorBoxStyle(leaderColors[currentDeck.leader] || []);
+
+  statsBox.appendChild(leaderStatField('Poder', stats.poder, () => promptLeaderNumber('poder', 'Poder', stats.poder), colorStyle));
+  statsBox.appendChild(leaderStatField('Vidas', stats.vidas, () => promptLeaderNumber('vidas', 'Vidas', stats.vidas), colorStyle));
+
+  abilityBox.innerHTML = '';
+  const ability = document.createElement('div');
+  ability.className = 'ld-ability' + (stats.habilidad ? '' : ' empty');
+  ability.innerHTML = stats.habilidad ? abilityHtml(stats.habilidad) : escapeHtml('+ anadir habilidad del lider');
+  ability.setAttribute('role', 'button');
+  ability.title = stats.habilidad ? 'Editar habilidad' : 'Anadir habilidad';
+  ability.addEventListener('click', () => openLeaderAbilityModal());
+  abilityBox.appendChild(ability);
+}
+
+// Resalta las palabras clave del juego escritas como "<Rush>", "<Blocker>",
+// etc. - se mantiene el texto escapado (sin permitir HTML del usuario) y
+// solo se envuelve en un span lo que cae entre "<" y ">".
+function abilityHtml(text) {
+  return text.split(/(<[^<>\n]+>)/g).map(part => {
+    const m = part.match(/^<([^<>\n]+)>$/);
+    if (m) {
+      return '<span class="ld-keyword">' + escapeHtml(m[1]) + '</span>';
+    }
+    return escapeHtml(part);
+  }).join('');
+}
+
+const leaderAbilityOverlay = document.getElementById('leader-ability-overlay');
+const leaderAbilityInput = document.getElementById('leader-ability-input');
+const leaderAbilityCloseBtn = document.getElementById('leader-ability-close');
+const leaderAbilitySaveBtn = document.getElementById('leader-ability-save-btn');
+
+function openLeaderAbilityModal() {
+  leaderAbilityInput.value = (leaderStats[currentDeck.leader] || {}).habilidad || '';
+  leaderAbilityOverlay.classList.add('show');
+}
+leaderAbilityCloseBtn.addEventListener('click', () => leaderAbilityOverlay.classList.remove('show'));
+leaderAbilityOverlay.addEventListener('click', (e) => {
+  if (e.target === leaderAbilityOverlay) leaderAbilityOverlay.classList.remove('show');
+});
+leaderAbilitySaveBtn.addEventListener('click', () => {
+  const trimmed = leaderAbilityInput.value.trim();
+  leaderStats[currentDeck.leader] = leaderStats[currentDeck.leader] || {};
+  if (trimmed) leaderStats[currentDeck.leader].habilidad = trimmed;
+  else delete leaderStats[currentDeck.leader].habilidad;
+  saveLeaderStats();
+  renderLeaderStats();
+  leaderAbilityOverlay.classList.remove('show');
+});
+
 // A hand-typed, optional label per card code (e.g. "OP01-016" -> "Monkey
 // D. Luffy"), shown under the code to make the list easier to read at a
 // glance. Shared across every deck, same as the photo - naming a card
@@ -2871,6 +3209,7 @@ function syncMazosToLeader(name) {
     deckError.style.display = 'none';
     renderDeckLiderSelect();
     renderDeckColorChips();
+    renderLeaderStats();
     renderDeckCardsList();
     renderLeaderPhoto();
     renderDeckChips();
@@ -2883,6 +3222,7 @@ function loadDeckIntoForm(d) {
   deckError.style.display = 'none';
   renderDeckLiderSelect();
   renderDeckColorChips();
+  renderLeaderStats();
   renderDeckCardsList();
   renderLeaderPhoto();
   renderDeckChips();
@@ -2894,6 +3234,7 @@ function startNewDeck() {
   deckError.style.display = 'none';
   renderDeckLiderSelect();
   renderDeckColorChips();
+  renderLeaderStats();
   renderDeckCardsList();
   renderLeaderPhoto();
   renderDeckChips();
@@ -3065,7 +3406,7 @@ function newTorneoDraft() {
 
 function renderTorneoLeaderSelect() {
   torneoLeaderSelect.innerHTML = '';
-  leaders.forEach(name => {
+  sortedLeaders().forEach(name => {
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = name;
@@ -3133,7 +3474,7 @@ function renderTorneoRounds() {
     placeholder.value = '';
     placeholder.textContent = '-- Elige lider rival --';
     select.appendChild(placeholder);
-    leaders.forEach(name => {
+    sortedLeaders().forEach(name => {
       const opt = document.createElement('option');
       opt.value = name;
       opt.textContent = name;
@@ -3293,6 +3634,7 @@ currentDeck = newDeckDraft();
 renderDeckChips();
 renderDeckLiderSelect();
 renderDeckColorChips();
+renderLeaderStats();
 renderDeckCardsList();
 renderLeaderPhoto();
 
