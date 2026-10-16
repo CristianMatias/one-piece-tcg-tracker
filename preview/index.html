@@ -220,10 +220,12 @@
     cursor: pointer;
     overflow: hidden;
   }
-  .ld-stat-fill { position: absolute; top: 0; bottom: 0; }
-  .ld-stat-fill-solid { inset: 0; animation: ld-fill-in .45s ease; }
-  .ld-stat-fill-left { left: 0; width: 50%; animation: ld-fill-left .45s ease; }
-  .ld-stat-fill-right { right: 0; width: 50%; animation: ld-fill-right .45s ease; }
+  .ld-stat-fill { position: absolute; inset: 0; }
+  .ld-stat-fill-solid { animation: ld-fill-in .45s ease; }
+  /* Triangulos diagonales (misma particion que el linear-gradient 135deg
+     original) que ademas entran deslizando desde su lado respectivo. */
+  .ld-stat-fill-a { clip-path: polygon(0 0, 100% 0, 0 100%); animation: ld-fill-left .45s ease; }
+  .ld-stat-fill-b { clip-path: polygon(100% 0, 100% 100%, 0 100%); animation: ld-fill-right .45s ease; }
   .ld-stat-content { position: relative; z-index: 1; }
   @keyframes ld-fill-in {
     from { clip-path: inset(0 100% 0 0); }
@@ -2936,10 +2938,10 @@ function leaderStatField(label, value, onEdit, colorStyle) {
     // de lider, asi se ve como si se rellenara.
     if (colorStyle.mode === 'split') {
       const left = document.createElement('div');
-      left.className = 'ld-stat-fill ld-stat-fill-left';
+      left.className = 'ld-stat-fill ld-stat-fill-a';
       left.style.background = colorStyle.bgA;
       const right = document.createElement('div');
-      right.className = 'ld-stat-fill ld-stat-fill-right';
+      right.className = 'ld-stat-fill ld-stat-fill-b';
       right.style.background = colorStyle.bgB;
       box.appendChild(left);
       box.appendChild(right);
