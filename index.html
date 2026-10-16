@@ -606,13 +606,16 @@
   .color-row:last-child { border-bottom: none; }
   .color-row-name { font-size: 13px; flex: 1; }
   .rename-leader-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: none;
     border: none;
     color: var(--text-muted);
-    font-size: 14px;
     padding: 6px;
     line-height: 1;
     flex-shrink: 0;
+    cursor: pointer;
   }
   .rename-leader-btn:hover { color: var(--accent); }
   .color-row-chips { display: flex; gap: 5px; flex-shrink: 0; }
@@ -2143,7 +2146,9 @@ function renderColorsList() {
     const renameBtn = document.createElement('button');
     renameBtn.type = 'button';
     renameBtn.className = 'rename-leader-btn';
-    renameBtn.textContent = '✎';
+    // SVG en vez de un caracter Unicode (ej. "✎"): ese glifo no existe
+    // en varias fuentes del stack usado y el boton se veia en blanco.
+    renameBtn.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
     renameBtn.title = 'Renombrar lider';
     renameBtn.setAttribute('aria-label', 'Renombrar ' + name);
     renameBtn.addEventListener('click', () => {
