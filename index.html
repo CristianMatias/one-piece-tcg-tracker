@@ -220,19 +220,27 @@
     cursor: pointer;
     overflow: hidden;
   }
-  .ld-stat-fill {
-    position: absolute;
-    inset: 0;
-    animation: ld-fill-in .45s ease;
-  }
+  .ld-stat-fill { position: absolute; top: 0; bottom: 0; }
+  .ld-stat-fill-solid { inset: 0; animation: ld-fill-in .45s ease; }
+  .ld-stat-fill-left { left: 0; width: 50%; animation: ld-fill-left .45s ease; }
+  .ld-stat-fill-right { right: 0; width: 50%; animation: ld-fill-right .45s ease; }
   .ld-stat-content { position: relative; z-index: 1; }
   @keyframes ld-fill-in {
     from { clip-path: inset(0 100% 0 0); }
     to { clip-path: inset(0 0 0 0); }
   }
-  .ld-stat .ld-num { font-size: 18px; font-weight: 600; margin: 0; }
+  @keyframes ld-fill-left {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes ld-fill-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  .ld-stat .ld-num { font-size: 18px; font-weight: 600; margin: 0; color: inherit; }
   .ld-stat .ld-num.empty { color: var(--text-muted); font-style: italic; font-size: 13px; }
   .ld-stat .ld-lab { font-size: 10px; color: var(--text-muted); margin: 2px 0 0; }
+  .ld-stat-content[style*="color"] .ld-lab { color: inherit; opacity: .85; }
   .ld-ability {
     background: var(--bg);
     border-radius: var(--radius);
@@ -1180,6 +1188,9 @@ function colorHex(letter) {
 }
 
 let leaders = [];
+function sortedLeaders() {
+  return leaders.slice().sort((a, b) => a.localeCompare(b, 'es'));
+}
 let matches = [];
 let leaderColors = {};
 let decks = [];
@@ -1831,8 +1842,8 @@ function createLeaderCombo(input, dropdown, selectEl) {
 
   function matchesFor(query) {
     const q = query.trim().toLowerCase();
-    if (!q) return leaders.slice();
-    return leaders.filter(name => leaderSearchText(name).includes(q));
+    if (!q) return sortedLeaders();
+    return sortedLeaders().filter(name => leaderSearchText(name).includes(q));
   }
 
   function setSelectValue(name) {
@@ -1860,9 +1871,9 @@ function createLeaderCombo(input, dropdown, selectEl) {
     dropdown.style.width = rect.width + 'px';
   }
 
-  function render() {
+  function render(showAll) {
     reposition();
-    const query = input.value;
+    const query = showAll ? '' : input.value;
     const matches = matchesFor(query);
     dropdown.innerHTML = '';
 
@@ -1898,7 +1909,8 @@ function createLeaderCombo(input, dropdown, selectEl) {
 
   input.addEventListener('focus', () => {
     highlight = 0;
-    render();
+    input.select(); // escribir reemplaza el nombre actual en vez de tener que borrarlo
+    render(true); // al entrar al campo, mostrar todos los lideres, no solo los que coinciden con el valor ya puesto
   });
   input.addEventListener('input', () => {
     highlight = 0;
@@ -1945,7 +1957,7 @@ function createLeaderCombo(input, dropdown, selectEl) {
 
 function renderMiLiderSelect() {
   miLiderSelect.innerHTML = '';
-  leaders.forEach(name => {
+  sortedLeaders().forEach(name => {
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = name;
@@ -1966,7 +1978,7 @@ function renderRivalSelect() {
   placeholder.value = '';
   placeholder.textContent = '-- Elige lider rival --';
   rivalSelect.appendChild(placeholder);
-  leaders.forEach(name => {
+  sortedLeaders().forEach(name => {
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = name;
@@ -2116,7 +2128,7 @@ rivalSelect.addEventListener('change', (e) => {
 // --- Menu aparte: gestion de colores por lider ---
 function renderColorsList() {
   colorsList.innerHTML = '';
-  leaders.forEach(name => {
+  sortedLeaders().forEach(name => {
     const current = leaderColors[name] || [];
     const row = document.createElement('div');
     row.className = 'color-row';
@@ -2920,12 +2932,23 @@ function leaderStatField(label, value, onEdit, colorStyle) {
 
   if (colorStyle) {
     // El color vive en una capa aparte (en vez de en el fondo de la caja)
-    // para poder animar su entrada con un "wipe" cada vez que se recrea -
-    // ocurre justo al cambiar de lider, asi se ve como si se rellenara.
-    const fill = document.createElement('div');
-    fill.className = 'ld-stat-fill';
-    fill.style.background = colorStyle.bg;
-    box.appendChild(fill);
+    // para poder animarlo cada vez que se recrea - ocurre justo al cambiar
+    // de lider, asi se ve como si se rellenara.
+    if (colorStyle.mode === 'split') {
+      const left = document.createElement('div');
+      left.className = 'ld-stat-fill ld-stat-fill-left';
+      left.style.background = colorStyle.bgA;
+      const right = document.createElement('div');
+      right.className = 'ld-stat-fill ld-stat-fill-right';
+      right.style.background = colorStyle.bgB;
+      box.appendChild(left);
+      box.appendChild(right);
+    } else {
+      const fill = document.createElement('div');
+      fill.className = 'ld-stat-fill ld-stat-fill-solid';
+      fill.style.background = colorStyle.bg;
+      box.appendChild(fill);
+    }
   }
 
   const content = document.createElement('div');
@@ -2946,11 +2969,11 @@ function leaderStatField(label, value, onEdit, colorStyle) {
 function leaderColorBoxStyle(colors) {
   if (!colors.length) return null;
   if (colors.length === 1) {
-    return { bg: colorHex(colors[0]), color: COLOR_ON_TEXT[colors[0]] };
+    return { mode: 'solid', bg: colorHex(colors[0]), color: COLOR_ON_TEXT[colors[0]] };
   }
   const [a, b] = colors;
   const textColor = (a === 'Y' || b === 'Y') ? COLOR_ON_TEXT.Y : '#fff';
-  return { bg: 'linear-gradient(135deg,' + colorHex(a) + ' 50%,' + colorHex(b) + ' 50%)', color: textColor };
+  return { mode: 'split', bgA: colorHex(a), bgB: colorHex(b), color: textColor };
 }
 
 // Poder/Vidas solo aceptan numeros enteros (sin signo, sin decimales -
@@ -3364,7 +3387,7 @@ function newTorneoDraft() {
 
 function renderTorneoLeaderSelect() {
   torneoLeaderSelect.innerHTML = '';
-  leaders.forEach(name => {
+  sortedLeaders().forEach(name => {
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = name;
@@ -3432,7 +3455,7 @@ function renderTorneoRounds() {
     placeholder.value = '';
     placeholder.textContent = '-- Elige lider rival --';
     select.appendChild(placeholder);
-    leaders.forEach(name => {
+    sortedLeaders().forEach(name => {
       const opt = document.createElement('option');
       opt.value = name;
       opt.textContent = name;
