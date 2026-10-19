@@ -2812,6 +2812,26 @@ function placeholderImageSvg() {
 
 let photoUploadTarget = null;
 
+// Descarga la foto que se acaba de mostrar en vivo desde el CDN y la
+// guarda en leaderPhotos, igual que si el usuario la hubiera subido a
+// mano. Mejor esfuerzo: si el CDN no da permiso CORS para leer los bytes,
+// falla en silencio y la foto se sigue viendo en vivo (sin guardar).
+async function saveAutoLeaderPhoto(leaderName, url) {
+  if (!leaderName || leaderPhotos[leaderName]) return;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const blob = await res.blob();
+    if (leaderPhotos[leaderName]) return; // se subio una a mano mientras tanto
+    leaderPhotos[leaderName] = await readAndResizeImage(blob, 520, 0.82);
+    saveLeaderPhotos();
+    if (currentDeck.leader === leaderName) renderLeaderPhoto();
+    renderLeaderPreview();
+  } catch (e) {
+    // CORS, red caida, etc. - se deja como estaba (viva desde el CDN)
+  }
+}
+
 function leaderUploadBtn(label) {
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -2881,6 +2901,11 @@ function renderLeaderPhoto() {
     img.src = externalCardImageUrl(autoCode);
     img.alt = escapeHtml(autoCode);
     img.onerror = () => { box.innerHTML = ''; box.appendChild(leaderUploadBtn('Toca para subir la foto del lider')); };
+    // Si carga bien, la guarda en leaderPhotos (igual que una subida manual)
+    // para que Registro y cualquier otra pantalla tambien la vean, no solo
+    // Mazos. Mejor esfuerzo: si el CDN no permite leer la imagen por CORS,
+    // se queda mostrandola en vivo aqui sin guardarla.
+    img.onload = () => saveAutoLeaderPhoto(currentDeck.leader, img.src);
     wrap.appendChild(img);
     wrap.appendChild(leaderUploadBtn('Subir foto propia'));
     box.appendChild(wrap);
