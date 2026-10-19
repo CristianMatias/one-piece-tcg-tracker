@@ -255,6 +255,8 @@
   }
   .ld-ability.empty { color: var(--text-muted); font-style: italic; }
   .ld-keyword { color: var(--accent-text); font-weight: 600; }
+  .ld-keyword-blue { color: #3b82f6; font-weight: 600; }
+  .ld-keyword-pink { color: #ec4899; font-weight: 600; }
   .card-cell .cell-qty {
     font-size: 14px;
     font-weight: 700;
@@ -3013,15 +3015,28 @@ function promptLeaderNumber(field, label, current) {
   renderLeaderStats();
 }
 
+// Valores por defecto cuando aun no se ha guardado un registro: 5000 de
+// poder siempre, y vidas segun si el lider es de 1 o 2 colores. Son solo
+// una sugerencia al mostrar/editar - no todos los lideres los cumplen, asi
+// que se pueden cambiar igual que cualquier otro valor.
+function defaultLeaderStat(field, leaderName) {
+  if (!leaderName) return '';
+  if (field === 'poder') return '5000';
+  const colors = leaderColors[leaderName] || [];
+  return colors.length >= 2 ? '4' : '5';
+}
+
 function renderLeaderStats() {
   const statsBox = document.getElementById('leader-stats-box');
   const abilityBox = document.getElementById('leader-ability-box');
   statsBox.innerHTML = '';
   const stats = leaderStats[currentDeck.leader] || {};
   const colorStyle = leaderColorBoxStyle(leaderColors[currentDeck.leader] || []);
+  const poderValue = stats.poder !== undefined ? stats.poder : defaultLeaderStat('poder', currentDeck.leader);
+  const vidasValue = stats.vidas !== undefined ? stats.vidas : defaultLeaderStat('vidas', currentDeck.leader);
 
-  statsBox.appendChild(leaderStatField('Poder', stats.poder, () => promptLeaderNumber('poder', 'Poder', stats.poder), colorStyle));
-  statsBox.appendChild(leaderStatField('Vidas', stats.vidas, () => promptLeaderNumber('vidas', 'Vidas', stats.vidas), colorStyle));
+  statsBox.appendChild(leaderStatField('Poder', poderValue, () => promptLeaderNumber('poder', 'Poder', poderValue), colorStyle));
+  statsBox.appendChild(leaderStatField('Vidas', vidasValue, () => promptLeaderNumber('vidas', 'Vidas', vidasValue), colorStyle));
 
   abilityBox.innerHTML = '';
   const ability = document.createElement('div');
@@ -3033,6 +3048,18 @@ function renderLeaderStats() {
   abilityBox.appendChild(ability);
 }
 
+// Frases de timing que se resaltan en un color aparte (comparacion sin
+// distinguir mayusculas/minusculas); el resto de <palabras clave> usa el
+// color de siempre.
+const KEYWORD_BLUE = ['active:main', "your turn", "opponent's turn"];
+const KEYWORD_PINK = ['once per turn'];
+function keywordClass(word) {
+  const w = word.trim().toLowerCase();
+  if (KEYWORD_BLUE.includes(w)) return 'ld-keyword-blue';
+  if (KEYWORD_PINK.includes(w)) return 'ld-keyword-pink';
+  return 'ld-keyword';
+}
+
 // Resalta las palabras clave del juego escritas como "<Rush>", "<Blocker>",
 // etc. - se mantiene el texto escapado (sin permitir HTML del usuario) y
 // solo se envuelve en un span lo que cae entre "<" y ">".
@@ -3040,7 +3067,7 @@ function abilityHtml(text) {
   return text.split(/(<[^<>\n]+>)/g).map(part => {
     const m = part.match(/^<([^<>\n]+)>$/);
     if (m) {
-      return '<span class="ld-keyword">' + escapeHtml(m[1]) + '</span>';
+      return '<span class="' + keywordClass(m[1]) + '">' + escapeHtml(m[1]) + '</span>';
     }
     return escapeHtml(part);
   }).join('');
