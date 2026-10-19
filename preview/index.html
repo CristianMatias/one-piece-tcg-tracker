@@ -257,6 +257,7 @@
   .ld-keyword { color: var(--accent-text); font-weight: 600; }
   .ld-keyword-blue { color: #3b82f6; font-weight: 600; }
   .ld-keyword-pink { color: #ec4899; font-weight: 600; }
+  .ld-keyword-don { background: #000; color: #fff; font-weight: 600; padding: 0 4px; border-radius: 3px; }
   .card-cell .cell-qty {
     font-size: 14px;
     font-weight: 700;
@@ -3102,8 +3103,10 @@ function renderLeaderStats() {
 // color de siempre.
 const KEYWORD_BLUE = ['active:main', "your turn", "opponent's turn"];
 const KEYWORD_PINK = ['once per turn'];
+const KEYWORD_DON_RE = /^don\s*!*\s*x\s*\d+$/i; // "DON!!x1", "DON!! x2", "DONx3"...
 function keywordClass(word) {
   const w = word.trim().toLowerCase();
+  if (KEYWORD_DON_RE.test(w)) return 'ld-keyword-don';
   if (KEYWORD_BLUE.includes(w)) return 'ld-keyword-blue';
   if (KEYWORD_PINK.includes(w)) return 'ld-keyword-pink';
   return 'ld-keyword';
