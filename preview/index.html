@@ -1059,6 +1059,7 @@ const TOURNAMENTS_KEY = 'op_tcg_tournaments';
 const CARD_PHOTOS_KEY = 'op_tcg_card_photos';
 const CARD_NAMES_KEY = 'op_tcg_card_names';
 const LEADER_STATS_KEY = 'op_tcg_leader_stats';
+const LEADER_CARD_CODES_KEY = 'op_tcg_leader_card_codes';
 
 // --- IndexedDB storage layer ---
 // All app data (leaders, matches, decks, colors, photos, tournaments) lives
@@ -1072,7 +1073,7 @@ const DB_VERSION = 1;
 const ALL_STORAGE_KEYS = [
   LEADERS_KEY, LEGACY_RIVAL_LEADERS_KEY, MATCHES_KEY,
   LEADER_COLORS_KEY, DECKS_KEY, LEADER_PHOTOS_KEY, TOURNAMENTS_KEY,
-  CARD_PHOTOS_KEY, CARD_NAMES_KEY, LEADER_STATS_KEY
+  CARD_PHOTOS_KEY, CARD_NAMES_KEY, LEADER_STATS_KEY, LEADER_CARD_CODES_KEY
 ];
 
 let dbPromise = null;
@@ -1209,6 +1210,7 @@ let leaderPhotos = {};
 let cardPhotos = {};
 let cardNames = {};
 let leaderStats = {};
+let leaderCardCodes = {};
 let tournaments = [];
 let torneoDraft = null;
 let torneoConfirmPending = false;
@@ -1530,6 +1532,29 @@ async function saveLeaderStats() {
     await idbSet(LEADER_STATS_KEY, leaderStats);
   } catch (e) {
     showToast('No se pudo guardar el dato del lider en el telefono');
+  }
+}
+
+// Codigo de carta del lider (ej. "OP01-001"), capturado de la primera
+// linea al pegar una lista - permite intentar cargar su foto desde el
+// CDN igual que se hace con las cartas normales, sin tener que subirla
+// a mano. Keyed por nombre de lider, igual que leaderPhotos/leaderStats.
+async function loadLeaderCardCodes() {
+  if (!HAS_STORAGE) return {};
+  try {
+    const parsed = await idbGet(LEADER_CARD_CODES_KEY);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+async function saveLeaderCardCodes() {
+  if (!HAS_STORAGE) return;
+  try {
+    await idbSet(LEADER_CARD_CODES_KEY, leaderCardCodes);
+  } catch (e) {
+    showToast('No se pudo guardar el codigo del lider en el telefono');
   }
 }
 
@@ -2025,6 +2050,7 @@ leaderPhotos = await loadLeaderPhotos();
 cardPhotos = await loadCardPhotos();
 cardNames = await loadCardNames();
 leaderStats = await loadLeaderStats();
+leaderCardCodes = await loadLeaderCardCodes();
 leaders = await loadLeaders();
 matches = await loadMatches();
 leaderColors = await loadLeaderColors();
@@ -2217,7 +2243,7 @@ function renameLeader(oldName, newName) {
   });
   saveTournaments();
 
-  [leaderColors, leaderPhotos, leaderStats].forEach((store) => {
+  [leaderColors, leaderPhotos, leaderStats, leaderCardCodes].forEach((store) => {
     if (store[oldName] !== undefined) {
       store[newName] = store[oldName];
       delete store[oldName];
@@ -2226,6 +2252,7 @@ function renameLeader(oldName, newName) {
   saveLeaderColors();
   saveLeaderPhotos();
   saveLeaderStats();
+  saveLeaderCardCodes();
 
   if (selectedLeader === oldName) selectedLeader = newName;
   if (selectedRival === oldName) selectedRival = newName;
@@ -2784,10 +2811,24 @@ function placeholderImageSvg() {
 
 let photoUploadTarget = null;
 
+function leaderUploadBtn(label) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'deck-photo-row';
+  btn.style.justifyContent = 'center';
+  btn.textContent = label;
+  btn.addEventListener('click', () => {
+    photoUploadTarget = currentDeck.leader;
+    leaderPhotoInput.click();
+  });
+  return btn;
+}
+
 function renderLeaderPhoto() {
   const box = document.getElementById('leader-photo-box');
   box.innerHTML = '';
   const photo = leaderPhotos[currentDeck.leader];
+  const autoCode = leaderCardCodes[currentDeck.leader];
 
   if (photo) {
     const wrap = document.createElement('div');
@@ -2825,17 +2866,25 @@ function renderLeaderPhoto() {
 
     wrap.appendChild(btnRow);
     box.appendChild(wrap);
+  } else if (autoCode) {
+    // Sin foto subida a mano, pero se conoce el codigo de carta del lider
+    // (de la primera linea de una lista pegada) - intenta cargarla del
+    // mismo CDN que las cartas normales. Si falla (404, red, etc.) cae al
+    // boton de subida manual de siempre.
+    const wrap = document.createElement('div');
+    wrap.style.textAlign = 'center';
+
+    const img = document.createElement('img');
+    img.className = 'leader-photo';
+    img.referrerPolicy = 'no-referrer';
+    img.src = externalCardImageUrl(autoCode);
+    img.alt = escapeHtml(autoCode);
+    img.onerror = () => { box.innerHTML = ''; box.appendChild(leaderUploadBtn('Toca para subir la foto del lider')); };
+    wrap.appendChild(img);
+    wrap.appendChild(leaderUploadBtn('Subir foto propia'));
+    box.appendChild(wrap);
   } else {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'deck-photo-row';
-    btn.style.justifyContent = 'center';
-    btn.textContent = 'Toca para subir la foto del lider';
-    btn.addEventListener('click', () => {
-      photoUploadTarget = currentDeck.leader;
-      leaderPhotoInput.click();
-    });
-    box.appendChild(btn);
+    box.appendChild(leaderUploadBtn('Toca para subir la foto del lider'));
   }
 }
 
@@ -3296,6 +3345,12 @@ function parseBulkList(text) {
 
     if (isLeaderSlot) {
       qty = 1;
+      // Guarda el codigo de la carta de lider para poder intentar cargar
+      // su foto desde el CDN (renderLeaderPhoto se encarga de usarlo).
+      if (currentDeck.leader && isValidCardCodeForPhoto(code)) {
+        leaderCardCodes[currentDeck.leader] = code;
+        saveLeaderCardCodes();
+      }
     } else {
       const cap = maxCopiesFor(code);
       let target = currentQty + qty;
