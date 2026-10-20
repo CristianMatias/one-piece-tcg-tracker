@@ -496,9 +496,9 @@
   .result-box { width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
   .result-box.win { background: var(--success-bg); color: var(--success); }
   .result-box.lose { background: var(--danger-bg); color: var(--danger); }
-  .history-item { display: grid; grid-template-columns: minmax(0, 1fr) 68px 26px 22px; align-items: center; gap: 8px; }
+  .history-item { display: grid; grid-template-columns: minmax(0, 1fr) 68px 26px 22px 22px; align-items: center; gap: 8px; }
   .history-item .history-badges { width: 68px; justify-content: flex-start; margin-top: 0; }
-  .history-item .del-btn { justify-self: center; }
+  .history-item .del-btn, .history-item .edit-btn { justify-self: center; }
   .result-pill {
     font-size: 11px;
     font-weight: 600;
@@ -1037,6 +1037,46 @@
     <p style="font-size:10.5px; color:var(--text-muted); margin:-4px 0 8px;">Usa &lt;Palabra&gt; para resaltar palabras clave (Rush, Blocker, Don...)</p>
     <textarea id="leader-ability-input" rows="6" placeholder="[On Your Turn] All of your Characters with a cost of 2 or more gain &lt;Rush&gt;."></textarea>
     <button class="modal-btn primary" id="leader-ability-save-btn" type="button" style="width:100%; margin-top:8px;">Guardar</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="edit-match-overlay">
+  <div class="modal-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <p class="modal-title" style="margin:0;">Editar partida</p>
+      <button class="modal-btn" id="edit-match-close" type="button">Cerrar</button>
+    </div>
+
+    <p class="label">Lider rival</p>
+    <select class="select" id="edit-match-rival-select" style="margin-bottom:10px;"></select>
+
+    <p class="label">Tipo de partida</p>
+    <div class="row3" id="edit-match-tipo" style="margin-bottom:10px;">
+      <button class="btn" data-value="Casual" type="button">Casual</button>
+      <button class="btn" data-value="Ranked" type="button">Ranked</button>
+      <button class="btn" data-value="Entrenamiento" type="button">Entrenamiento</button>
+    </div>
+
+    <p class="label">Turno</p>
+    <div class="row2" id="edit-match-turno" style="margin-bottom:10px;">
+      <button class="btn" data-value="Primero" type="button">Primero</button>
+      <button class="btn" data-value="Segundo" type="button">Segundo</button>
+    </div>
+
+    <p class="label">Sensacion de manos</p>
+    <div class="row3" id="edit-match-mano" style="margin-bottom:10px;">
+      <button class="btn" data-value="Buena" type="button">Buena</button>
+      <button class="btn" data-value="Regular" type="button">Regular</button>
+      <button class="btn" data-value="Mala" type="button">Mala</button>
+    </div>
+
+    <p class="label">Resultado</p>
+    <div class="row2" id="edit-match-resultado" style="margin-bottom:10px;">
+      <button class="btn-win" data-value="Victoria" type="button">Gane</button>
+      <button class="btn-lose" data-value="Derrota" type="button">Perdi</button>
+    </div>
+
+    <button class="modal-btn primary" id="edit-match-save-btn" type="button" style="width:100%;">Guardar cambios</button>
   </div>
 </div>
 
@@ -2354,6 +2394,14 @@ function renderHistory(own) {
       <div class="history-badges">${badges}</div>
       <span class="result-box ${isWin ? 'win' : 'lose'}">${isWin ? 'V' : 'D'}</span>
     `;
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'edit-btn rename-leader-btn';
+    editBtn.setAttribute('aria-label', 'Editar partida');
+    editBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+    editBtn.addEventListener('click', () => openEditMatchModal(m));
+    item.appendChild(editBtn);
+
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
     delBtn.className = 'del-btn';
@@ -3171,6 +3219,79 @@ leaderAbilitySaveBtn.addEventListener('click', () => {
   saveLeaderStats();
   renderLeaderStats();
   leaderAbilityOverlay.classList.remove('show');
+});
+
+// Editar una partida ya registrada: todo menos "Mi lider" (si quieren
+// cambiar ese, se borra el registro y se anade uno nuevo desde el
+// formulario normal). Reusa los mismos grupos de botones que el
+// formulario de Registro pero sin data-group, para no compartir estado
+// con el listener global de ahi (document.querySelectorAll mas abajo).
+const editMatchOverlay = document.getElementById('edit-match-overlay');
+const editMatchCloseBtn = document.getElementById('edit-match-close');
+const editMatchRivalSelect = document.getElementById('edit-match-rival-select');
+const editMatchGroups = {
+  tipo: document.getElementById('edit-match-tipo'),
+  turno: document.getElementById('edit-match-turno'),
+  mano: document.getElementById('edit-match-mano'),
+  resultado: document.getElementById('edit-match-resultado')
+};
+const editMatchSaveBtn = document.getElementById('edit-match-save-btn');
+let editMatchId = null;
+let editSelections = { tipo: null, turno: null, mano: null, resultado: null };
+
+Object.keys(editMatchGroups).forEach(key => {
+  editMatchGroups[key].querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      editSelections[key] = btn.dataset.value;
+      editMatchGroups[key].querySelectorAll('button').forEach(b => b.classList.toggle('selected', b === btn));
+    });
+  });
+});
+
+function openEditMatchModal(match) {
+  editMatchId = match.id;
+  editSelections = { tipo: match.tipo, turno: match.turno, mano: match.mano, resultado: match.resultado };
+
+  editMatchRivalSelect.innerHTML = '';
+  sortedLeaders().forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    editMatchRivalSelect.appendChild(opt);
+  });
+  editMatchRivalSelect.value = match.liderRival;
+
+  Object.keys(editMatchGroups).forEach(key => {
+    editMatchGroups[key].querySelectorAll('button').forEach(b => {
+      b.classList.toggle('selected', b.dataset.value === editSelections[key]);
+    });
+  });
+
+  editMatchOverlay.classList.add('show');
+}
+
+editMatchCloseBtn.addEventListener('click', () => editMatchOverlay.classList.remove('show'));
+editMatchOverlay.addEventListener('click', (e) => {
+  if (e.target === editMatchOverlay) editMatchOverlay.classList.remove('show');
+});
+
+editMatchSaveBtn.addEventListener('click', () => {
+  if (!editSelections.tipo || !editSelections.turno || !editSelections.mano || !editSelections.resultado) {
+    showToast('Completa todos los campos');
+    return;
+  }
+  const match = matches.find(m => m.id === editMatchId);
+  if (match) {
+    match.liderRival = editMatchRivalSelect.value;
+    match.tipo = editSelections.tipo;
+    match.turno = editSelections.turno;
+    match.mano = editSelections.mano;
+    match.resultado = editSelections.resultado;
+    saveMatches();
+    showToast('Partida actualizada');
+    updateStats(selectedLeader);
+  }
+  editMatchOverlay.classList.remove('show');
 });
 
 // A hand-typed, optional label per card code (e.g. "OP01-016" -> "Monkey
