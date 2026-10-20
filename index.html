@@ -255,6 +255,9 @@
   }
   .ld-ability.empty { color: var(--text-muted); font-style: italic; }
   .ld-keyword { color: var(--accent-text); font-weight: 600; }
+  .ld-keyword-blue { color: #3b82f6; font-weight: 600; }
+  .ld-keyword-pink { color: #ec4899; font-weight: 600; }
+  .ld-keyword-don { background: #000; color: #fff; font-weight: 600; padding: 0 4px; border-radius: 3px; }
   .card-cell .cell-qty {
     font-size: 14px;
     font-weight: 700;
@@ -1057,6 +1060,7 @@ const TOURNAMENTS_KEY = 'op_tcg_tournaments';
 const CARD_PHOTOS_KEY = 'op_tcg_card_photos';
 const CARD_NAMES_KEY = 'op_tcg_card_names';
 const LEADER_STATS_KEY = 'op_tcg_leader_stats';
+const LEADER_CARD_CODES_KEY = 'op_tcg_leader_card_codes';
 
 // --- IndexedDB storage layer ---
 // All app data (leaders, matches, decks, colors, photos, tournaments) lives
@@ -1070,7 +1074,7 @@ const DB_VERSION = 1;
 const ALL_STORAGE_KEYS = [
   LEADERS_KEY, LEGACY_RIVAL_LEADERS_KEY, MATCHES_KEY,
   LEADER_COLORS_KEY, DECKS_KEY, LEADER_PHOTOS_KEY, TOURNAMENTS_KEY,
-  CARD_PHOTOS_KEY, CARD_NAMES_KEY, LEADER_STATS_KEY
+  CARD_PHOTOS_KEY, CARD_NAMES_KEY, LEADER_STATS_KEY, LEADER_CARD_CODES_KEY
 ];
 
 let dbPromise = null;
@@ -1207,6 +1211,7 @@ let leaderPhotos = {};
 let cardPhotos = {};
 let cardNames = {};
 let leaderStats = {};
+let leaderCardCodes = {};
 let tournaments = [];
 let torneoDraft = null;
 let torneoConfirmPending = false;
@@ -1528,6 +1533,29 @@ async function saveLeaderStats() {
     await idbSet(LEADER_STATS_KEY, leaderStats);
   } catch (e) {
     showToast('No se pudo guardar el dato del lider en el telefono');
+  }
+}
+
+// Codigo de carta del lider (ej. "OP01-001"), capturado de la primera
+// linea al pegar una lista - permite intentar cargar su foto desde el
+// CDN igual que se hace con las cartas normales, sin tener que subirla
+// a mano. Keyed por nombre de lider, igual que leaderPhotos/leaderStats.
+async function loadLeaderCardCodes() {
+  if (!HAS_STORAGE) return {};
+  try {
+    const parsed = await idbGet(LEADER_CARD_CODES_KEY);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+async function saveLeaderCardCodes() {
+  if (!HAS_STORAGE) return;
+  try {
+    await idbSet(LEADER_CARD_CODES_KEY, leaderCardCodes);
+  } catch (e) {
+    showToast('No se pudo guardar el codigo del lider en el telefono');
   }
 }
 
@@ -2023,6 +2051,7 @@ leaderPhotos = await loadLeaderPhotos();
 cardPhotos = await loadCardPhotos();
 cardNames = await loadCardNames();
 leaderStats = await loadLeaderStats();
+leaderCardCodes = await loadLeaderCardCodes();
 leaders = await loadLeaders();
 matches = await loadMatches();
 leaderColors = await loadLeaderColors();
@@ -2215,7 +2244,7 @@ function renameLeader(oldName, newName) {
   });
   saveTournaments();
 
-  [leaderColors, leaderPhotos, leaderStats].forEach((store) => {
+  [leaderColors, leaderPhotos, leaderStats, leaderCardCodes].forEach((store) => {
     if (store[oldName] !== undefined) {
       store[newName] = store[oldName];
       delete store[oldName];
@@ -2224,6 +2253,7 @@ function renameLeader(oldName, newName) {
   saveLeaderColors();
   saveLeaderPhotos();
   saveLeaderStats();
+  saveLeaderCardCodes();
 
   if (selectedLeader === oldName) selectedLeader = newName;
   if (selectedRival === oldName) selectedRival = newName;
@@ -2782,10 +2812,44 @@ function placeholderImageSvg() {
 
 let photoUploadTarget = null;
 
+// Descarga la foto que se acaba de mostrar en vivo desde el CDN y la
+// guarda en leaderPhotos, igual que si el usuario la hubiera subido a
+// mano. Mejor esfuerzo: si el CDN no da permiso CORS para leer los bytes,
+// falla en silencio y la foto se sigue viendo en vivo (sin guardar).
+async function saveAutoLeaderPhoto(leaderName, url) {
+  if (!leaderName || leaderPhotos[leaderName]) return;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const blob = await res.blob();
+    if (leaderPhotos[leaderName]) return; // se subio una a mano mientras tanto
+    leaderPhotos[leaderName] = await readAndResizeImage(blob, 520, 0.82);
+    saveLeaderPhotos();
+    if (currentDeck.leader === leaderName) renderLeaderPhoto();
+    renderLeaderPreview();
+  } catch (e) {
+    // CORS, red caida, etc. - se deja como estaba (viva desde el CDN)
+  }
+}
+
+function leaderUploadBtn(label) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'deck-photo-row';
+  btn.style.justifyContent = 'center';
+  btn.textContent = label;
+  btn.addEventListener('click', () => {
+    photoUploadTarget = currentDeck.leader;
+    leaderPhotoInput.click();
+  });
+  return btn;
+}
+
 function renderLeaderPhoto() {
   const box = document.getElementById('leader-photo-box');
   box.innerHTML = '';
   const photo = leaderPhotos[currentDeck.leader];
+  const autoCode = leaderCardCodes[currentDeck.leader];
 
   if (photo) {
     const wrap = document.createElement('div');
@@ -2823,17 +2887,30 @@ function renderLeaderPhoto() {
 
     wrap.appendChild(btnRow);
     box.appendChild(wrap);
+  } else if (autoCode) {
+    // Sin foto subida a mano, pero se conoce el codigo de carta del lider
+    // (de la primera linea de una lista pegada) - intenta cargarla del
+    // mismo CDN que las cartas normales. Si falla (404, red, etc.) cae al
+    // boton de subida manual de siempre.
+    const wrap = document.createElement('div');
+    wrap.style.textAlign = 'center';
+
+    const img = document.createElement('img');
+    img.className = 'leader-photo';
+    img.referrerPolicy = 'no-referrer';
+    img.src = externalCardImageUrl(autoCode);
+    img.alt = escapeHtml(autoCode);
+    img.onerror = () => { box.innerHTML = ''; box.appendChild(leaderUploadBtn('Toca para subir la foto del lider')); };
+    // Si carga bien, la guarda en leaderPhotos (igual que una subida manual)
+    // para que Registro y cualquier otra pantalla tambien la vean, no solo
+    // Mazos. Mejor esfuerzo: si el CDN no permite leer la imagen por CORS,
+    // se queda mostrandola en vivo aqui sin guardarla.
+    img.onload = () => saveAutoLeaderPhoto(currentDeck.leader, img.src);
+    wrap.appendChild(img);
+    wrap.appendChild(leaderUploadBtn('Subir foto propia'));
+    box.appendChild(wrap);
   } else {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'deck-photo-row';
-    btn.style.justifyContent = 'center';
-    btn.textContent = 'Toca para subir la foto del lider';
-    btn.addEventListener('click', () => {
-      photoUploadTarget = currentDeck.leader;
-      leaderPhotoInput.click();
-    });
-    box.appendChild(btn);
+    box.appendChild(leaderUploadBtn('Toca para subir la foto del lider'));
   }
 }
 
@@ -3013,15 +3090,28 @@ function promptLeaderNumber(field, label, current) {
   renderLeaderStats();
 }
 
+// Valores por defecto cuando aun no se ha guardado un registro: 5000 de
+// poder siempre, y vidas segun si el lider es de 1 o 2 colores. Son solo
+// una sugerencia al mostrar/editar - no todos los lideres los cumplen, asi
+// que se pueden cambiar igual que cualquier otro valor.
+function defaultLeaderStat(field, leaderName) {
+  if (!leaderName) return '';
+  if (field === 'poder') return '5000';
+  const colors = leaderColors[leaderName] || [];
+  return colors.length >= 2 ? '4' : '5';
+}
+
 function renderLeaderStats() {
   const statsBox = document.getElementById('leader-stats-box');
   const abilityBox = document.getElementById('leader-ability-box');
   statsBox.innerHTML = '';
   const stats = leaderStats[currentDeck.leader] || {};
   const colorStyle = leaderColorBoxStyle(leaderColors[currentDeck.leader] || []);
+  const poderValue = stats.poder !== undefined ? stats.poder : defaultLeaderStat('poder', currentDeck.leader);
+  const vidasValue = stats.vidas !== undefined ? stats.vidas : defaultLeaderStat('vidas', currentDeck.leader);
 
-  statsBox.appendChild(leaderStatField('Poder', stats.poder, () => promptLeaderNumber('poder', 'Poder', stats.poder), colorStyle));
-  statsBox.appendChild(leaderStatField('Vidas', stats.vidas, () => promptLeaderNumber('vidas', 'Vidas', stats.vidas), colorStyle));
+  statsBox.appendChild(leaderStatField('Poder', poderValue, () => promptLeaderNumber('poder', 'Poder', poderValue), colorStyle));
+  statsBox.appendChild(leaderStatField('Vidas', vidasValue, () => promptLeaderNumber('vidas', 'Vidas', vidasValue), colorStyle));
 
   abilityBox.innerHTML = '';
   const ability = document.createElement('div');
@@ -3033,6 +3123,20 @@ function renderLeaderStats() {
   abilityBox.appendChild(ability);
 }
 
+// Frases de timing que se resaltan en un color aparte (comparacion sin
+// distinguir mayusculas/minusculas); el resto de <palabras clave> usa el
+// color de siempre.
+const KEYWORD_BLUE = ['active:main', "your turn", "opponent's turn"];
+const KEYWORD_PINK = ['once per turn'];
+const KEYWORD_DON_RE = /^don\s*!*\s*x\s*\d+$/i; // "DON!!x1", "DON!! x2", "DONx3"...
+function keywordClass(word) {
+  const w = word.trim().toLowerCase();
+  if (KEYWORD_DON_RE.test(w)) return 'ld-keyword-don';
+  if (KEYWORD_BLUE.includes(w)) return 'ld-keyword-blue';
+  if (KEYWORD_PINK.includes(w)) return 'ld-keyword-pink';
+  return 'ld-keyword';
+}
+
 // Resalta las palabras clave del juego escritas como "<Rush>", "<Blocker>",
 // etc. - se mantiene el texto escapado (sin permitir HTML del usuario) y
 // solo se envuelve en un span lo que cae entre "<" y ">".
@@ -3040,7 +3144,7 @@ function abilityHtml(text) {
   return text.split(/(<[^<>\n]+>)/g).map(part => {
     const m = part.match(/^<([^<>\n]+)>$/);
     if (m) {
-      return '<span class="ld-keyword">' + escapeHtml(m[1]) + '</span>';
+      return '<span class="' + keywordClass(m[1]) + '">' + escapeHtml(m[1]) + '</span>';
     }
     return escapeHtml(part);
   }).join('');
@@ -3269,6 +3373,12 @@ function parseBulkList(text) {
 
     if (isLeaderSlot) {
       qty = 1;
+      // Guarda el codigo de la carta de lider para poder intentar cargar
+      // su foto desde el CDN (renderLeaderPhoto se encarga de usarlo).
+      if (currentDeck.leader && isValidCardCodeForPhoto(code)) {
+        leaderCardCodes[currentDeck.leader] = code;
+        saveLeaderCardCodes();
+      }
     } else {
       const cap = maxCopiesFor(code);
       let target = currentQty + qty;
