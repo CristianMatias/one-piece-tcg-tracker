@@ -589,6 +589,13 @@
     display: flex;
     flex-direction: column;
   }
+  #color-detail-overlay .modal-card {
+    max-width: 380px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+  }
+  #color-detail-matches { overflow-y: auto; }
   .torneos-modal-card {
     max-width: 460px;
     max-height: 85vh;
@@ -671,6 +678,8 @@
     gap: 10px;
   }
   .perf-row:last-child { border-bottom: none; }
+  .perf-row.clickable { cursor: pointer; }
+  .perf-row.clickable:hover { background: var(--bg); }
   .perf-left { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 0; }
   .perf-name { font-size: 13px; margin-right: 4px; }
   .perf-right { text-align: right; flex-shrink: 0; }
@@ -1080,6 +1089,19 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="color-detail-overlay">
+  <div class="modal-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <p class="modal-title" style="margin:0;" id="color-detail-title">Rendimiento</p>
+      <button class="modal-btn" id="color-detail-close" type="button">Cerrar</button>
+    </div>
+    <p class="label" style="margin-bottom:6px;">Por lider rival</p>
+    <div id="color-detail-leaders" style="margin-bottom:14px;"></div>
+    <p class="label" style="margin-bottom:6px;">Partidas</p>
+    <div id="color-detail-matches"></div>
+  </div>
+</div>
+
 <script type="module">
 window.addEventListener('error', function (e) {
   const el = document.getElementById('debug-banner');
@@ -1224,6 +1246,23 @@ function deckTotalCards() {
 const ADD_OPTION = '__add__';
 const COLOR_LETTERS = ['B', 'U', 'Y', 'R', 'G', 'P'];
 const COLOR_NAMES = { B: 'Negro', U: 'Azul', Y: 'Amarillo', R: 'Rojo', G: 'Verde', P: 'Purpura' };
+const MANO_ICON = { Buena: '👍', Mala: '👎', Regular: '✋' };
+const TIPO_LETTER = { Casual: 'C', Ranked: 'R', Torneo: 'T', Entrenamiento: 'E' };
+// Badges (turno/mano/tipo) de una partida, reusados en el Historial y en
+// el detalle de "Rendimiento por color rival".
+function matchBadgesHtml(m) {
+  let badges = '';
+  if (m.turno === 'Primero' || m.turno === 'Segundo') {
+    badges += '<span class="hbadge" title="' + m.turno + '">' + (m.turno === 'Primero' ? '1' : '2') + '</span>';
+  }
+  if (MANO_ICON[m.mano]) {
+    badges += '<span class="hbadge" title="Mano ' + m.mano.toLowerCase() + '">' + MANO_ICON[m.mano] + '</span>';
+  }
+  if (TIPO_LETTER[m.tipo]) {
+    badges += '<span class="hbadge" title="' + m.tipo + '">' + TIPO_LETTER[m.tipo] + '</span>';
+  }
+  return badges;
+}
 // Mismos tonos que .color-chip/.color-badge, reutilizados para pintar las
 // cajas de Poder/Vidas del color (o colores) del lider.
 const COLOR_HEX = { B: '#2b2b2b', U: '#2f6fed', Y: '#e8b93b', R: 'var(--accent)', G: '#2f8f4e', P: '#7a3fa0' };
@@ -1802,7 +1841,10 @@ function colorBadgesHtml(colorLetters) {
   return colorLetters.map(c => '<span class="color-badge ' + c + '">' + c + '</span>').join('');
 }
 
-function renderPerfRows(container, buckets, emptyMsg) {
+// onClick(key) es opcional - cuando se pasa, cada fila se vuelve clicable
+// (ahora mismo solo lo usa el desglose por color, para abrir su modal de
+// detalle; el resto de usos de renderPerfRows se quedan igual que siempre).
+function renderPerfRows(container, buckets, emptyMsg, onClick) {
   const keys = Object.keys(buckets);
   if (!keys.length) {
     container.innerHTML = '<p class="empty">' + emptyMsg + '</p>';
@@ -1816,7 +1858,7 @@ function renderPerfRows(container, buckets, emptyMsg) {
     const total = b.wins + b.losses;
     const pct = Math.round((b.wins / total) * 100);
     const row = document.createElement('div');
-    row.className = 'perf-row';
+    row.className = 'perf-row' + (onClick ? ' clickable' : '');
     row.innerHTML = `
       <div class="perf-left">
         <span class="perf-name">${escapeHtml(b.label)}</span>
@@ -1827,6 +1869,10 @@ function renderPerfRows(container, buckets, emptyMsg) {
         <p class="perf-sub">${b.wins}V - ${b.losses}D</p>
       </div>
     `;
+    if (onClick) {
+      row.setAttribute('role', 'button');
+      row.addEventListener('click', () => onClick(key));
+    }
     container.appendChild(row);
   });
 }
@@ -1848,7 +1894,14 @@ function renderColorBreakdown(own) {
       if (m.resultado === 'Victoria') buckets[letter].wins++; else buckets[letter].losses++;
     });
   });
-  renderPerfRows(colorStatsList, buckets, 'Todavia no hay partidas registradas con este lider.');
+  renderPerfRows(colorStatsList, buckets, 'Todavia no hay partidas registradas con este lider.', (key) => {
+    const matchesForColor = own.filter(m => {
+      const colors = leaderColors[m.liderRival] || [];
+      const keys = colors.length ? colors : ['X'];
+      return keys.includes(key);
+    });
+    openColorDetailModal(buckets[key].label, matchesForColor);
+  });
 }
 
 function renderLeaderBestWorst(own) {
@@ -2370,22 +2423,11 @@ function renderHistory(own) {
     return;
   }
   historyList.innerHTML = '';
-  const manoIcon = { Buena: '\uD83D\uDC4D', Mala: '\uD83D\uDC4E', Regular: '\u270B' };
-  const tipoLetter = { Casual: 'C', Ranked: 'R', Torneo: 'T', Entrenamiento: 'E' };
   own.slice().reverse().forEach(m => {
     const item = document.createElement('div');
     item.className = 'history-item';
     const isWin = m.resultado === 'Victoria';
-    let badges = '';
-    if (m.turno === 'Primero' || m.turno === 'Segundo') {
-      badges += '<span class="hbadge" title="' + m.turno + '">' + (m.turno === 'Primero' ? '1' : '2') + '</span>';
-    }
-    if (manoIcon[m.mano]) {
-      badges += '<span class="hbadge" title="Mano ' + m.mano.toLowerCase() + '">' + manoIcon[m.mano] + '</span>';
-    }
-    if (tipoLetter[m.tipo]) {
-      badges += '<span class="hbadge" title="' + m.tipo + '">' + tipoLetter[m.tipo] + '</span>';
-    }
+    const badges = matchBadgesHtml(m);
     item.innerHTML = `
       <div class="history-left">
         <span class="history-main">vs ${escapeHtml(m.liderRival)}</span>
@@ -3292,6 +3334,62 @@ editMatchSaveBtn.addEventListener('click', () => {
     updateStats(selectedLeader);
   }
   editMatchOverlay.classList.remove('show');
+});
+
+// Detalle de "Rendimiento por color rival": al tocar una fila de color se
+// abre esto con un mini-ranking por lider concreto de ese color y la
+// lista de partidas una a una (igual que el Historial, pero de solo
+// lectura - editar/borrar se sigue haciendo desde el Historial normal).
+const colorDetailOverlay = document.getElementById('color-detail-overlay');
+const colorDetailClose = document.getElementById('color-detail-close');
+const colorDetailTitle = document.getElementById('color-detail-title');
+const colorDetailLeaders = document.getElementById('color-detail-leaders');
+const colorDetailMatches = document.getElementById('color-detail-matches');
+
+function openColorDetailModal(colorLabel, matchesForColor) {
+  colorDetailTitle.textContent = 'Rendimiento vs ' + colorLabel;
+
+  const leaderBuckets = {};
+  matchesForColor.forEach(m => {
+    if (!leaderBuckets[m.liderRival]) {
+      leaderBuckets[m.liderRival] = {
+        wins: 0,
+        losses: 0,
+        label: m.liderRival,
+        badges: colorBadgesHtml(leaderColors[m.liderRival] || [])
+      };
+    }
+    if (m.resultado === 'Victoria') leaderBuckets[m.liderRival].wins++;
+    else leaderBuckets[m.liderRival].losses++;
+  });
+  renderPerfRows(colorDetailLeaders, leaderBuckets, 'Sin partidas.');
+
+  colorDetailMatches.innerHTML = '';
+  if (!matchesForColor.length) {
+    colorDetailMatches.innerHTML = '<p class="empty">Sin partidas.</p>';
+  } else {
+    matchesForColor.slice().reverse().forEach(m => {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      const isWin = m.resultado === 'Victoria';
+      item.innerHTML = `
+        <div class="history-left">
+          <span class="history-main">vs ${escapeHtml(m.liderRival)}</span>
+          <span class="history-date">${m.fecha}</span>
+        </div>
+        <div class="history-badges">${matchBadgesHtml(m)}</div>
+        <span class="result-box ${isWin ? 'win' : 'lose'}">${isWin ? 'V' : 'D'}</span>
+      `;
+      colorDetailMatches.appendChild(item);
+    });
+  }
+
+  colorDetailOverlay.classList.add('show');
+}
+
+colorDetailClose.addEventListener('click', () => colorDetailOverlay.classList.remove('show'));
+colorDetailOverlay.addEventListener('click', (e) => {
+  if (e.target === colorDetailOverlay) colorDetailOverlay.classList.remove('show');
 });
 
 // A hand-typed, optional label per card code (e.g. "OP01-016" -> "Monkey
