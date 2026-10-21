@@ -3415,15 +3415,20 @@ function renderColorDetailLeaders(matchesForColor) {
     const detail = document.createElement('div');
     detail.className = 'color-detail-leader-matches';
 
+    // Las rondas de torneo no tienen turno guardado (turno: ''), asi que no
+    // cuentan como "primero" ni "segundo" - si se sumaran al total de esta
+    // fila, Partidas no cuadraria con Yendo primero + Yendo segundo. Se usa
+    // el mismo total de esos dos para que siempre sumen bien.
     const firstM = b.matches.filter(m => m.turno === 'Primero');
     const secondM = b.matches.filter(m => m.turno === 'Segundo');
+    const totalConTurno = firstM.length + secondM.length;
     const winPct = (list) => list.length ? Math.round((list.filter(m => m.resultado === 'Victoria').length / list.length) * 100) + '%' : '-';
     const stats = document.createElement('div');
     stats.className = 'stats-row color-detail-leader-stats';
     stats.innerHTML = `
       <div class="stat">
-        <p class="num">${total}</p>
-        <p class="lab">Partidas</p>
+        <p class="num">${totalConTurno}</p>
+        <p class="lab">Partidas${totalConTurno !== total ? ' (sin torneos)' : ''}</p>
       </div>
       <div class="stat">
         <p class="num">${winPct(firstM)}</p>
