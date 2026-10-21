@@ -600,6 +600,19 @@
     border-radius: var(--radius);
     padding: 2px 10px;
   }
+  .color-detail-leader-row { cursor: pointer; }
+  .color-detail-leader-row.last { border-bottom: none; }
+  .color-detail-leader-row.last.open { border-bottom: 1px solid var(--border); }
+  .color-detail-leader-row .chevron { color: var(--text-muted); transition: transform .2s ease; flex-shrink: 0; }
+  .color-detail-leader-row.open .chevron { transform: rotate(180deg); }
+  .color-detail-leader-matches {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .25s ease;
+  }
+  .color-detail-leader-matches.show { max-height: 70vh; }
+  .color-detail-leader-matches .history-item { padding: 8px 2px; border-bottom: 1px solid var(--border); }
+  .color-detail-leader-matches .history-item:last-child { border-bottom: none; }
   .torneos-modal-card {
     max-width: 460px;
     max-height: 85vh;
@@ -1106,10 +1119,8 @@
       <p class="perf-sub" id="color-detail-hero-record"></p>
     </div>
 
-    <p class="label" style="margin-bottom:6px;">Por lider rival</p>
-    <div id="color-detail-leaders" class="color-detail-leaders-panel" style="margin-bottom:14px;"></div>
-    <p class="label" style="margin-bottom:6px;">Partidas</p>
-    <div id="color-detail-matches"></div>
+    <p class="label" style="margin-bottom:6px;">Por lider rival - toca uno para ver su historial</p>
+    <div id="color-detail-leaders" class="color-detail-leaders-panel"></div>
   </div>
 </div>
 
@@ -3348,16 +3359,91 @@ editMatchSaveBtn.addEventListener('click', () => {
 });
 
 // Detalle de "Rendimiento por color rival": al tocar una fila de color se
-// abre esto con un mini-ranking por lider concreto de ese color y la
-// lista de partidas una a una (igual que el Historial, pero de solo
-// lectura - editar/borrar se sigue haciendo desde el Historial normal).
+// abre esto con un mini-ranking por lider concreto de ese color. Cada fila
+// de lider es un acordeon - al tocarla despliega debajo el historial de
+// partidas solo contra ese lider (de solo lectura; editar/borrar se sigue
+// haciendo desde el Historial normal). Solo una fila abierta a la vez.
 const colorDetailOverlay = document.getElementById('color-detail-overlay');
 const colorDetailClose = document.getElementById('color-detail-close');
 const colorDetailTitle = document.getElementById('color-detail-title');
 const colorDetailLeaders = document.getElementById('color-detail-leaders');
-const colorDetailMatches = document.getElementById('color-detail-matches');
 const colorDetailHeroPct = document.getElementById('color-detail-hero-pct');
 const colorDetailHeroRecord = document.getElementById('color-detail-hero-record');
+const CHEVRON_SVG = '<svg class="chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+
+function renderColorDetailLeaders(matchesForColor) {
+  const buckets = {};
+  matchesForColor.forEach(m => {
+    if (!buckets[m.liderRival]) buckets[m.liderRival] = { wins: 0, losses: 0, matches: [] };
+    buckets[m.liderRival].matches.push(m);
+    if (m.resultado === 'Victoria') buckets[m.liderRival].wins++;
+    else buckets[m.liderRival].losses++;
+  });
+  const names = Object.keys(buckets).sort((a, b) => (buckets[b].wins + buckets[b].losses) - (buckets[a].wins + buckets[a].losses));
+
+  colorDetailLeaders.innerHTML = '';
+  if (!names.length) {
+    colorDetailLeaders.innerHTML = '<p class="empty">Sin partidas.</p>';
+    return;
+  }
+
+  names.forEach((name, i) => {
+    const b = buckets[name];
+    const total = b.wins + b.losses;
+    const pct = Math.round((b.wins / total) * 100);
+
+    const row = document.createElement('div');
+    // Alterna con su "detail" (otro div hermano), asi que el ":last-child"
+    // que normalmente le quita el borde a la ultima fila de .perf-row no
+    // aplica aqui - se marca a mano en la ultima.
+    row.className = 'perf-row color-detail-leader-row' + (i === names.length - 1 ? ' last' : '');
+    row.setAttribute('role', 'button');
+    row.innerHTML = `
+      <div class="perf-left">
+        <span class="perf-name">${escapeHtml(name)}</span>
+        ${colorBadgesHtml(leaderColors[name] || [])}
+      </div>
+      <div class="perf-right" style="display:flex; align-items:center; gap:8px;">
+        <div>
+          <p class="perf-pct ${pct >= 50 ? 'good' : 'bad'}">${pct}%</p>
+          <p class="perf-sub">${b.wins}V - ${b.losses}D</p>
+        </div>
+        ${CHEVRON_SVG}
+      </div>
+    `;
+
+    const detail = document.createElement('div');
+    detail.className = 'color-detail-leader-matches';
+    b.matches.slice().reverse().forEach(m => {
+      const isWin = m.resultado === 'Victoria';
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      // El rival ya se sabe por la fila que se despliega - no hace falta
+      // repetirlo, la fecha pasa a ser el texto principal de cada linea.
+      item.innerHTML = `
+        <div class="history-left">
+          <span class="history-main">${m.fecha}</span>
+        </div>
+        <div class="history-badges">${matchBadgesHtml(m)}</div>
+        <span class="result-box ${isWin ? 'win' : 'lose'}">${isWin ? 'V' : 'D'}</span>
+      `;
+      detail.appendChild(item);
+    });
+
+    row.addEventListener('click', () => {
+      const wasOpen = row.classList.contains('open');
+      colorDetailLeaders.querySelectorAll('.color-detail-leader-row.open').forEach(r => r.classList.remove('open'));
+      colorDetailLeaders.querySelectorAll('.color-detail-leader-matches.show').forEach(d => d.classList.remove('show'));
+      if (!wasOpen) {
+        row.classList.add('open');
+        detail.classList.add('show');
+      }
+    });
+
+    colorDetailLeaders.appendChild(row);
+    colorDetailLeaders.appendChild(detail);
+  });
+}
 
 function openColorDetailModal(colorLabel, matchesForColor) {
   colorDetailTitle.textContent = 'vs ' + colorLabel;
@@ -3369,40 +3455,7 @@ function openColorDetailModal(colorLabel, matchesForColor) {
   colorDetailHeroPct.style.color = pct >= 50 ? 'var(--success)' : 'var(--danger)';
   colorDetailHeroRecord.textContent = wins + 'V - ' + losses + 'D';
 
-  const leaderBuckets = {};
-  matchesForColor.forEach(m => {
-    if (!leaderBuckets[m.liderRival]) {
-      leaderBuckets[m.liderRival] = {
-        wins: 0,
-        losses: 0,
-        label: m.liderRival,
-        badges: colorBadgesHtml(leaderColors[m.liderRival] || [])
-      };
-    }
-    if (m.resultado === 'Victoria') leaderBuckets[m.liderRival].wins++;
-    else leaderBuckets[m.liderRival].losses++;
-  });
-  renderPerfRows(colorDetailLeaders, leaderBuckets, 'Sin partidas.');
-
-  colorDetailMatches.innerHTML = '';
-  if (!matchesForColor.length) {
-    colorDetailMatches.innerHTML = '<p class="empty">Sin partidas.</p>';
-  } else {
-    matchesForColor.slice().reverse().forEach(m => {
-      const item = document.createElement('div');
-      item.className = 'history-item';
-      const isWin = m.resultado === 'Victoria';
-      item.innerHTML = `
-        <div class="history-left">
-          <span class="history-main">vs ${escapeHtml(m.liderRival)}</span>
-          <span class="history-date">${m.fecha}</span>
-        </div>
-        <div class="history-badges">${matchBadgesHtml(m)}</div>
-        <span class="result-box ${isWin ? 'win' : 'lose'}">${isWin ? 'V' : 'D'}</span>
-      `;
-      colorDetailMatches.appendChild(item);
-    });
-  }
+  renderColorDetailLeaders(matchesForColor);
 
   colorDetailOverlay.classList.add('show');
 }
