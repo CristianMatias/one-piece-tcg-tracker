@@ -3414,6 +3414,28 @@ function renderColorDetailLeaders(matchesForColor) {
 
     const detail = document.createElement('div');
     detail.className = 'color-detail-leader-matches';
+
+    const firstM = b.matches.filter(m => m.turno === 'Primero');
+    const secondM = b.matches.filter(m => m.turno === 'Segundo');
+    const winPct = (list) => list.length ? Math.round((list.filter(m => m.resultado === 'Victoria').length / list.length) * 100) + '%' : '-';
+    const stats = document.createElement('div');
+    stats.className = 'stats-row color-detail-leader-stats';
+    stats.innerHTML = `
+      <div class="stat">
+        <p class="num">${total}</p>
+        <p class="lab">Partidas</p>
+      </div>
+      <div class="stat">
+        <p class="num">${winPct(firstM)}</p>
+        <p class="lab">Yendo primero</p>
+      </div>
+      <div class="stat">
+        <p class="num">${winPct(secondM)}</p>
+        <p class="lab">Yendo segundo</p>
+      </div>
+    `;
+    detail.appendChild(stats);
+
     b.matches.slice().reverse().forEach(m => {
       const isWin = m.resultado === 'Victoria';
       const item = document.createElement('div');
