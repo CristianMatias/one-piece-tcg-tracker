@@ -219,6 +219,9 @@
     text-align: center;
     cursor: pointer;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .ld-stat-circle {
     flex: 0 0 72px;
@@ -227,12 +230,8 @@
     align-self: center;
     border-radius: 50%;
     padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
-  .ld-stat-circle .ld-num { font-size: 15px; }
-  .ld-stat-circle .ld-lab { font-size: 8px; }
+  .ld-stat-circle .ld-num { font-size: 16px; }
   .ld-stat-fill { position: absolute; inset: 0; }
   .ld-stat-fill-solid { animation: ld-fill-in .45s ease; }
   /* Triangulos diagonales (misma particion que el linear-gradient 135deg
@@ -3176,10 +3175,8 @@ function leaderStatField(label, value, onEdit, colorStyle, circle) {
   content.className = 'ld-stat-content';
   if (colorStyle) content.style.color = colorStyle.color;
   content.innerHTML =
-    '<p class="ld-num' + (value ? '' : ' empty') + '">' + escapeHtml(value || ('+ ' + label.toLowerCase())) + '</p>' +
-    '<p class="ld-lab">' + label + '</p>';
+    '<p class="ld-num' + (value ? '' : ' empty') + '">' + escapeHtml(value || ('+ ' + label.toLowerCase())) + '</p>';
   box.appendChild(content);
-
   box.addEventListener('click', onEdit);
   return box;
 }
