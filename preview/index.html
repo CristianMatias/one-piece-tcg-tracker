@@ -209,7 +209,7 @@
     color: var(--text-muted);
     font-style: italic;
   }
-  .ld-stats { display: flex; flex-direction: column; gap: 8px; }
+  .ld-stats { display: flex; flex-direction: row; gap: 8px; align-items: stretch; }
   .ld-stat {
     position: relative;
     flex: 1;
@@ -220,6 +220,17 @@
     cursor: pointer;
     overflow: hidden;
   }
+  .ld-stat-circle {
+    flex: 0 0 72px;
+    width: 72px;
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ld-stat-circle .ld-num { font-size: 15px; }
+  .ld-stat-circle .ld-lab { font-size: 8px; }
   .ld-stat-fill { position: absolute; inset: 0; }
   .ld-stat-fill-solid { animation: ld-fill-in .45s ease; }
   /* Triangulos diagonales (misma particion que el linear-gradient 135deg
@@ -3132,9 +3143,9 @@ cardPhotoInput.addEventListener('change', async (e) => {
 // Poder/vidas/habilidad del lider activo: igual que la foto, hand-typed
 // una vez y compartido por todos los mazos que usan ese lider. Opcional,
 // no bloquea guardar el mazo.
-function leaderStatField(label, value, onEdit, colorStyle) {
+function leaderStatField(label, value, onEdit, colorStyle, circle) {
   const box = document.createElement('div');
-  box.className = 'ld-stat';
+  box.className = 'ld-stat' + (circle ? ' ld-stat-circle' : '');
   box.setAttribute('role', 'button');
   box.title = value ? 'Editar ' + label.toLowerCase() : 'Anadir ' + label.toLowerCase();
 
@@ -3223,7 +3234,7 @@ function renderLeaderStats() {
   const vidasValue = stats.vidas !== undefined ? stats.vidas : defaultLeaderStat('vidas', currentDeck.leader);
 
   statsBox.appendChild(leaderStatField('Poder', poderValue, () => promptLeaderNumber('poder', 'Poder', poderValue), colorStyle));
-  statsBox.appendChild(leaderStatField('Vidas', vidasValue, () => promptLeaderNumber('vidas', 'Vidas', vidasValue), colorStyle));
+  statsBox.appendChild(leaderStatField('Vidas', vidasValue, () => promptLeaderNumber('vidas', 'Vidas', vidasValue), colorStyle, true));
 
   abilityBox.innerHTML = '';
   const ability = document.createElement('div');
