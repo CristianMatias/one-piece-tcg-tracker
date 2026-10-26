@@ -3681,7 +3681,11 @@ function parseBulkList(text) {
   let added = 0;
   let skipped = 0;
   let capped = 0;
-  const isFirstEver = currentDeck.cards.length === 0;
+  // "Vacio" incluye el caso de que solo quede el lider (cards.length 1):
+  // pasa cuando se borran a mano el resto de cartas y se vuelve a pegar
+  // una lista nueva - si no, esa primera linea (el lider) se contaba como
+  // una carta normal y le sumaba una copia invisible de mas a su cantidad.
+  const isFirstEver = currentDeck.cards.length <= 1;
   let isFirstLineOfThisPaste = true;
 
   lines.forEach(line => {
@@ -3697,29 +3701,33 @@ function parseBulkList(text) {
     const isLeaderSlot = isFirstEver && isFirstLineOfThisPaste;
     isFirstLineOfThisPaste = false;
 
-    const existing = currentDeck.cards.find(c => c.code === code);
-    const currentQty = existing ? existing.qty : 0;
-
     if (isLeaderSlot) {
-      qty = 1;
       // Guarda el codigo de la carta de lider para poder intentar cargar
       // su foto desde el CDN (renderLeaderPhoto se encarga de usarlo).
       if (currentDeck.leader && isValidCardCodeForPhoto(code)) {
         leaderCardCodes[currentDeck.leader] = code;
         saveLeaderCardCodes();
       }
-    } else {
-      const cap = maxCopiesFor(code);
-      let target = currentQty + qty;
-      if (target > cap) {
-        target = cap;
-        capped++;
-      }
-      qty = target - currentQty;
-      if (qty <= 0) {
-        skipped++;
-        return;
-      }
+      // Reemplaza el slot del lider (si ya habia uno) en vez de sumarle
+      // una copia encima.
+      if (currentDeck.cards.length) currentDeck.cards[0] = { code: code, qty: 1 };
+      else currentDeck.cards.push({ code: code, qty: 1 });
+      added++;
+      return;
+    }
+
+    const existing = currentDeck.cards.find(c => c.code === code);
+    const currentQty = existing ? existing.qty : 0;
+    const cap = maxCopiesFor(code);
+    let target = currentQty + qty;
+    if (target > cap) {
+      target = cap;
+      capped++;
+    }
+    qty = target - currentQty;
+    if (qty <= 0) {
+      skipped++;
+      return;
     }
 
     const remaining = MAX_DECK_SIZE - deckTotalCards();
