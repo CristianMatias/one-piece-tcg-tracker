@@ -290,6 +290,19 @@
     line-height: 1;
     padding: 2px;
   }
+  .card-cell-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 5/7;
+    border-style: dashed;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-family: inherit;
+  }
+  .card-cell-add:hover { border-color: var(--accent); color: var(--accent); }
+  .card-cell-add-plus { font-size: 30px; line-height: 1; font-weight: 300; }
   .qty-btn {
     width: 22px;
     height: 22px;
@@ -3535,7 +3548,9 @@ function renderDeckCardsList() {
 
   const nonLeaderCards = currentDeck.cards.slice(1);
 
-  if (!nonLeaderCards.length) {
+  // Sin lider todavia (cards vacio del todo) no hay donde enganchar una
+  // carta suelta sin pisar el slot del lider - se pide pegar la lista.
+  if (!nonLeaderCards.length && !currentDeck.cards.length) {
     deckCardsList.innerHTML = '<p class="empty">Todavia no has anadido cartas.</p>';
     return;
   }
@@ -3596,7 +3611,61 @@ function renderDeckCardsList() {
     grid.appendChild(cell);
   });
 
+  if (currentDeck.cards.length && total < MAX_DECK_SIZE) {
+    grid.appendChild(addCardCell());
+  }
+
   deckCardsList.appendChild(grid);
+}
+
+// Celda "+" del mismo tamano que una carta, al final de la rejilla,
+// para anadir una suelta sin tener que abrir "Pegar lista".
+function addCardCell() {
+  const cell = document.createElement('button');
+  cell.type = 'button';
+  cell.className = 'card-cell card-cell-add';
+  cell.setAttribute('aria-label', 'Anadir carta al mazo');
+  cell.title = 'Anadir carta al mazo';
+  cell.innerHTML = '<span class="card-cell-add-plus">+</span>';
+  cell.addEventListener('click', promptAddSingleCard);
+  return cell;
+}
+
+// Mismo formato "NxCODIGO" que "Pegar lista", pero siempre como carta
+// normal - nunca como slot del lider (ese ya esta fijo en cards[0]).
+function promptAddSingleCard() {
+  const input = window.prompt('Cantidad y codigo (ej. 2xOP01-016):', '1x');
+  if (input === null) return;
+  const trimmed = input.trim();
+  if (!trimmed) return;
+  const match = trimmed.match(/^(\d+)\s*[xX]\s*([A-Za-z0-9-]+)$/);
+  const qtyWanted = match ? parseInt(match[1], 10) : 0;
+  if (!match || !qtyWanted) {
+    showToast('Formato no valido, usa por ejemplo 2xOP01-016');
+    return;
+  }
+  const code = match[2].toUpperCase();
+
+  const remaining = MAX_DECK_SIZE - deckTotalCards();
+  if (remaining <= 0) {
+    showToast('El mazo ya tiene el maximo de ' + MAX_DECK_SIZE + ' cartas');
+    return;
+  }
+
+  const nonLeaderCards = currentDeck.cards.slice(1);
+  const existing = nonLeaderCards.find(c => c.code === code);
+  const currentQty = existing ? existing.qty : 0;
+  const cap = maxCopiesFor(code);
+  const target = Math.min(currentQty + qtyWanted, cap, currentQty + remaining);
+  const qty = target - currentQty;
+  if (qty <= 0) {
+    showToast('Ya tienes el maximo de copias de esa carta');
+    return;
+  }
+
+  if (existing) existing.qty += qty;
+  else currentDeck.cards.push({ code: code, qty: qty });
+  renderDeckCardsList();
 }
 
 // Adjusts a single card's copies by delta (+1/-1), respecting the per-card
