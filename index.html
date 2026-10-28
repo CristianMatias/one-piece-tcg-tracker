@@ -3573,9 +3573,10 @@ function renderDeckCardsList() {
 
   const nonLeaderCards = currentDeck.cards.slice(1);
 
-  // Sin lider todavia (cards vacio del todo) no hay donde enganchar una
-  // carta suelta sin pisar el slot del lider - se pide pegar la lista.
-  if (!nonLeaderCards.length && !currentDeck.cards.length) {
+  // Sin lider elegido todavia no hay a que mazo enganchar una carta suelta.
+  // Con lider (aunque cards siga vacio porque nunca se le pego su lista)
+  // ya se puede usar el boton + para empezar a anadir una a una.
+  if (!nonLeaderCards.length && !currentDeck.leader) {
     deckCardsList.innerHTML = '<p class="empty">Todavia no has anadido cartas.</p>';
     return;
   }
@@ -3636,7 +3637,7 @@ function renderDeckCardsList() {
     grid.appendChild(cell);
   });
 
-  if (currentDeck.cards.length && total < MAX_DECK_SIZE) {
+  if (currentDeck.leader && total < MAX_DECK_SIZE) {
     grid.appendChild(addCardCell());
   }
 
@@ -3670,6 +3671,13 @@ function promptAddSingleCard() {
     return;
   }
   const code = match[2].toUpperCase();
+
+  // Si el mazo todavia no tiene el slot del lider (nunca se le pego su
+  // lista), lo crea ahora - como haria "Pegar lista" - para no pisarlo
+  // con esta carta nueva.
+  if (!currentDeck.cards.length) {
+    currentDeck.cards.push({ code: leaderCardCodes[currentDeck.leader] || '', qty: 1 });
+  }
 
   const remaining = MAX_DECK_SIZE - deckTotalCards();
   if (remaining <= 0) {
