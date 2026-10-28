@@ -3034,15 +3034,13 @@ function renderLeaderPhoto() {
 
     const img = document.createElement('img');
     img.className = 'leader-photo';
-    img.referrerPolicy = 'no-referrer';
-    img.src = externalCardImageUrl(autoCode);
     img.alt = escapeHtml(autoCode);
-    img.onerror = () => { box.innerHTML = ''; box.appendChild(leaderUploadBtn('Toca para subir la foto del lider')); };
     // Si carga bien, la guarda en leaderPhotos (igual que una subida manual)
     // para que Registro y cualquier otra pantalla tambien la vean, no solo
     // Mazos. Mejor esfuerzo: si el CDN no permite leer la imagen por CORS,
     // se queda mostrandola en vivo aqui sin guardarla.
     img.onload = () => saveAutoLeaderPhoto(currentDeck.leader, img.src);
+    trySetCardImage(img, autoCode, () => { box.innerHTML = ''; box.appendChild(leaderUploadBtn('Toca para subir la foto del lider')); });
     wrap.appendChild(img);
     wrap.appendChild(leaderUploadBtn('Subir foto propia'));
     box.appendChild(wrap);
@@ -3096,9 +3094,24 @@ function placeholderCardSvg() {
 // matches every prefix we already validate (OP, ST, EB, PRB, P). This is
 // a best-effort third-party lookup: if it 404s or the service is down,
 // cardPhotoBox() falls back to the generic placeholder below.
-function externalCardImageUrl(code) {
+function externalCardImageUrl(code, size) {
   const set = code.split('-')[0];
-  return 'https://cards.oplaytcg.com/' + set + '/en/small/' + code + '.webp';
+  return 'https://cards.oplaytcg.com/' + set + '/en/' + (size || 'small') + '/' + code + '.webp';
+}
+
+// Some recently-added cards (fresh sets, alt arts) are missing from the
+// "small" thumbnail folder on the CDN while already present in "large" -
+// retry there once before giving up, instead of showing a blank card for
+// something that does exist. Zero downside: if "large" is also missing,
+// it just fails the same way "small" did.
+function trySetCardImage(img, code, onGiveUp) {
+  img.referrerPolicy = 'no-referrer';
+  img.onerror = () => {
+    if (img.dataset.triedLarge) { onGiveUp(); return; }
+    img.dataset.triedLarge = '1';
+    img.src = externalCardImageUrl(code, 'large');
+  };
+  img.src = externalCardImageUrl(code, 'small');
 }
 
 function cardPhotoBox(code) {
@@ -3114,14 +3127,9 @@ function cardPhotoBox(code) {
     box.innerHTML = '<img src="' + manualPhoto + '" alt="' + escapeHtml(code) + '" />';
   } else if (isValidCardCodeForPhoto(code)) {
     const img = document.createElement('img');
-    // Some hotlink-protection setups reject requests whose Referer header
-    // points at a different site but allow ones with no Referer at all -
-    // this asks the browser to omit it entirely for this request.
-    img.referrerPolicy = 'no-referrer';
-    img.src = externalCardImageUrl(code);
     img.alt = escapeHtml(code);
     img.loading = 'lazy';
-    img.onerror = () => { box.innerHTML = placeholderCardSvg(); };
+    trySetCardImage(img, code, () => { box.innerHTML = placeholderCardSvg(); });
     box.appendChild(img);
   } else {
     box.innerHTML = placeholderCardSvg();
