@@ -3099,19 +3099,36 @@ function externalCardImageUrl(code, size) {
   return 'https://cards.oplaytcg.com/' + set + '/en/' + (size || 'small') + '/' + code + '.webp';
 }
 
-// Some recently-added cards (fresh sets, alt arts) are missing from the
-// "small" thumbnail folder on the CDN while already present in "large" -
-// retry there once before giving up, instead of showing a blank card for
-// something that does exist. Zero downside: if "large" is also missing,
-// it just fails the same way "small" did.
+// En este CDN, algunas cartas de OP14 y OP15 estan catalogadas bajo la
+// carpeta del booster extra con el que se repartieron (EB04) en vez de
+// bajo la de su propio set - el resto de cartas de esos sets si viven en
+// su carpeta normal, asi que esto se prueba solo como ultimo recurso.
+const CDN_EXTRA_SET_FOLDER = { OP14: 'EB04', OP15: 'EB04' };
+
+// Intenta, en orden: small del set propio, large del set propio, y (solo
+// para OP14/OP15) small y large de su booster extra - antes de rendirse.
+// Cada paso es gratis si falla: se comporta igual que antes de probarlo.
+function candidateCardImageUrls(code) {
+  const set = code.split('-')[0];
+  const urls = [externalCardImageUrl(code, 'small'), externalCardImageUrl(code, 'large')];
+  const extraFolder = CDN_EXTRA_SET_FOLDER[set];
+  if (extraFolder) {
+    urls.push('https://cards.oplaytcg.com/' + extraFolder + '/en/small/' + code + '.webp');
+    urls.push('https://cards.oplaytcg.com/' + extraFolder + '/en/large/' + code + '.webp');
+  }
+  return urls;
+}
+
 function trySetCardImage(img, code, onGiveUp) {
   img.referrerPolicy = 'no-referrer';
+  const urls = candidateCardImageUrls(code);
+  let i = 0;
   img.onerror = () => {
-    if (img.dataset.triedLarge) { onGiveUp(); return; }
-    img.dataset.triedLarge = '1';
-    img.src = externalCardImageUrl(code, 'large');
+    i++;
+    if (i >= urls.length) { onGiveUp(); return; }
+    img.src = urls[i];
   };
-  img.src = externalCardImageUrl(code, 'small');
+  img.src = urls[0];
 }
 
 function cardPhotoBox(code) {
