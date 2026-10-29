@@ -158,7 +158,10 @@
   .deck-card-del { background: none; border: none; color: var(--text-muted); font-size: 15px; padding: 2px 4px; }
   .card-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    /* minmax(0, 1fr) en vez de 1fr a secas: sin el minimo en 0, una celda
+       con contenido que no se puede encoger fuerza a toda su columna a
+       ensancharse mas que las demas (bug clasico de CSS Grid). */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
   .card-cell {
