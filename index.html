@@ -158,7 +158,10 @@
   .deck-card-del { background: none; border: none; color: var(--text-muted); font-size: 15px; padding: 2px 4px; }
   .card-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    /* minmax(0, 1fr) en vez de 1fr a secas: sin el minimo en 0, una celda
+       con contenido que no se puede encoger fuerza a toda su columna a
+       ensancharse mas que las demas (bug clasico de CSS Grid). */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
   .card-cell {
@@ -209,7 +212,7 @@
     color: var(--text-muted);
     font-style: italic;
   }
-  .ld-stats { display: flex; flex-direction: column; gap: 8px; }
+  .ld-stats { display: flex; flex-direction: row; gap: 8px; align-items: stretch; }
   .ld-stat {
     position: relative;
     flex: 1;
@@ -219,7 +222,19 @@
     text-align: center;
     cursor: pointer;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
+  .ld-stat-circle {
+    flex: 0 0 72px;
+    width: 72px;
+    height: 72px;
+    align-self: center;
+    border-radius: 50%;
+    padding: 0;
+  }
+  .ld-stat-circle .ld-num { font-size: 16px; }
   .ld-stat-fill { position: absolute; inset: 0; }
   .ld-stat-fill-solid { animation: ld-fill-in .45s ease; }
   /* Triangulos diagonales (misma particion que el linear-gradient 135deg
@@ -278,6 +293,19 @@
     line-height: 1;
     padding: 2px;
   }
+  .card-cell-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 5/7;
+    border-style: dashed;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-family: inherit;
+  }
+  .card-cell-add:hover { border-color: var(--accent); color: var(--accent); }
+  .card-cell-add-plus { font-size: 30px; line-height: 1; font-weight: 300; }
   .qty-btn {
     width: 22px;
     height: 22px;
@@ -496,9 +524,9 @@
   .result-box { width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
   .result-box.win { background: var(--success-bg); color: var(--success); }
   .result-box.lose { background: var(--danger-bg); color: var(--danger); }
-  .history-item { display: grid; grid-template-columns: minmax(0, 1fr) 68px 26px 22px; align-items: center; gap: 8px; }
+  .history-item { display: grid; grid-template-columns: minmax(0, 1fr) 68px 26px 22px 22px; align-items: center; gap: 8px; }
   .history-item .history-badges { width: 68px; justify-content: flex-start; margin-top: 0; }
-  .history-item .del-btn { justify-self: center; }
+  .history-item .del-btn, .history-item .edit-btn { justify-self: center; }
   .result-pill {
     font-size: 11px;
     font-weight: 600;
@@ -589,6 +617,30 @@
     display: flex;
     flex-direction: column;
   }
+  #color-detail-overlay .modal-card {
+    max-width: 380px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  #color-detail-hero-pct { font-size: 34px; }
+  .color-detail-leaders-panel {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 2px 10px;
+  }
+  .color-detail-leader-row { cursor: pointer; }
+  .color-detail-leader-row.last { border-bottom: none; }
+  .color-detail-leader-row.last.open { border-bottom: 1px solid var(--border); }
+  .color-detail-leader-row .chevron { color: var(--text-muted); transition: transform .2s ease; flex-shrink: 0; }
+  .color-detail-leader-row.open .chevron { transform: rotate(180deg); }
+  .color-detail-leader-matches {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .25s ease;
+  }
+  .color-detail-leader-matches.show { max-height: 70vh; }
+  .color-detail-leader-matches .history-item { padding: 8px 2px; border-bottom: 1px solid var(--border); }
+  .color-detail-leader-matches .history-item:last-child { border-bottom: none; }
   .torneos-modal-card {
     max-width: 460px;
     max-height: 85vh;
@@ -671,6 +723,8 @@
     gap: 10px;
   }
   .perf-row:last-child { border-bottom: none; }
+  .perf-row.clickable { cursor: pointer; }
+  .perf-row.clickable:hover { background: var(--bg); }
   .perf-left { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 0; }
   .perf-name { font-size: 13px; margin-right: 4px; }
   .perf-right { text-align: right; flex-shrink: 0; }
@@ -1040,6 +1094,64 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="edit-match-overlay">
+  <div class="modal-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <p class="modal-title" style="margin:0;">Editar partida</p>
+      <button class="modal-btn" id="edit-match-close" type="button">Cerrar</button>
+    </div>
+
+    <p class="label">Lider rival</p>
+    <select class="select" id="edit-match-rival-select" style="margin-bottom:10px;"></select>
+
+    <p class="label">Tipo de partida</p>
+    <div class="row3" id="edit-match-tipo" style="margin-bottom:10px;">
+      <button class="btn" data-value="Casual" type="button">Casual</button>
+      <button class="btn" data-value="Ranked" type="button">Ranked</button>
+      <button class="btn" data-value="Entrenamiento" type="button">Entrenamiento</button>
+    </div>
+
+    <p class="label">Turno</p>
+    <div class="row2" id="edit-match-turno" style="margin-bottom:10px;">
+      <button class="btn" data-value="Primero" type="button">Primero</button>
+      <button class="btn" data-value="Segundo" type="button">Segundo</button>
+    </div>
+
+    <p class="label">Sensacion de manos</p>
+    <div class="row3" id="edit-match-mano" style="margin-bottom:10px;">
+      <button class="btn" data-value="Buena" type="button">Buena</button>
+      <button class="btn" data-value="Regular" type="button">Regular</button>
+      <button class="btn" data-value="Mala" type="button">Mala</button>
+    </div>
+
+    <p class="label">Resultado</p>
+    <div class="row2" id="edit-match-resultado" style="margin-bottom:10px;">
+      <button class="btn-win" data-value="Victoria" type="button">Gane</button>
+      <button class="btn-lose" data-value="Derrota" type="button">Perdi</button>
+    </div>
+
+    <button class="modal-btn primary" id="edit-match-save-btn" type="button" style="width:100%;">Guardar cambios</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="color-detail-overlay">
+  <div class="modal-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+      <p class="modal-title" style="margin:0;" id="color-detail-title">Rendimiento</p>
+      <button class="modal-btn" id="color-detail-close" type="button">Cerrar</button>
+    </div>
+
+    <div class="stat" style="margin:4px 0 16px;">
+      <p class="num" id="color-detail-hero-pct">-</p>
+      <p class="lab">Winrate total</p>
+      <p class="perf-sub" id="color-detail-hero-record"></p>
+    </div>
+
+    <p class="label" style="margin-bottom:6px;">Por lider rival - toca uno para ver su historial</p>
+    <div id="color-detail-leaders" class="color-detail-leaders-panel"></div>
+  </div>
+</div>
+
 <script type="module">
 window.addEventListener('error', function (e) {
   const el = document.getElementById('debug-banner');
@@ -1184,6 +1296,23 @@ function deckTotalCards() {
 const ADD_OPTION = '__add__';
 const COLOR_LETTERS = ['B', 'U', 'Y', 'R', 'G', 'P'];
 const COLOR_NAMES = { B: 'Negro', U: 'Azul', Y: 'Amarillo', R: 'Rojo', G: 'Verde', P: 'Purpura' };
+const MANO_ICON = { Buena: '👍', Mala: '👎', Regular: '✋' };
+const TIPO_LETTER = { Casual: 'C', Ranked: 'R', Torneo: 'T', Entrenamiento: 'E' };
+// Badges (turno/mano/tipo) de una partida, reusados en el Historial y en
+// el detalle de "Rendimiento por color rival".
+function matchBadgesHtml(m) {
+  let badges = '';
+  if (m.turno === 'Primero' || m.turno === 'Segundo') {
+    badges += '<span class="hbadge" title="' + m.turno + '">' + (m.turno === 'Primero' ? '1' : '2') + '</span>';
+  }
+  if (MANO_ICON[m.mano]) {
+    badges += '<span class="hbadge" title="Mano ' + m.mano.toLowerCase() + '">' + MANO_ICON[m.mano] + '</span>';
+  }
+  if (TIPO_LETTER[m.tipo]) {
+    badges += '<span class="hbadge" title="' + m.tipo + '">' + TIPO_LETTER[m.tipo] + '</span>';
+  }
+  return badges;
+}
 // Mismos tonos que .color-chip/.color-badge, reutilizados para pintar las
 // cajas de Poder/Vidas del color (o colores) del lider.
 const COLOR_HEX = { B: '#2b2b2b', U: '#2f6fed', Y: '#e8b93b', R: 'var(--accent)', G: '#2f8f4e', P: '#7a3fa0' };
@@ -1762,7 +1891,10 @@ function colorBadgesHtml(colorLetters) {
   return colorLetters.map(c => '<span class="color-badge ' + c + '">' + c + '</span>').join('');
 }
 
-function renderPerfRows(container, buckets, emptyMsg) {
+// onClick(key) es opcional - cuando se pasa, cada fila se vuelve clicable
+// (ahora mismo solo lo usa el desglose por color, para abrir su modal de
+// detalle; el resto de usos de renderPerfRows se quedan igual que siempre).
+function renderPerfRows(container, buckets, emptyMsg, onClick) {
   const keys = Object.keys(buckets);
   if (!keys.length) {
     container.innerHTML = '<p class="empty">' + emptyMsg + '</p>';
@@ -1776,7 +1908,7 @@ function renderPerfRows(container, buckets, emptyMsg) {
     const total = b.wins + b.losses;
     const pct = Math.round((b.wins / total) * 100);
     const row = document.createElement('div');
-    row.className = 'perf-row';
+    row.className = 'perf-row' + (onClick ? ' clickable' : '');
     row.innerHTML = `
       <div class="perf-left">
         <span class="perf-name">${escapeHtml(b.label)}</span>
@@ -1787,6 +1919,10 @@ function renderPerfRows(container, buckets, emptyMsg) {
         <p class="perf-sub">${b.wins}V - ${b.losses}D</p>
       </div>
     `;
+    if (onClick) {
+      row.setAttribute('role', 'button');
+      row.addEventListener('click', () => onClick(key));
+    }
     container.appendChild(row);
   });
 }
@@ -1808,7 +1944,14 @@ function renderColorBreakdown(own) {
       if (m.resultado === 'Victoria') buckets[letter].wins++; else buckets[letter].losses++;
     });
   });
-  renderPerfRows(colorStatsList, buckets, 'Todavia no hay partidas registradas con este lider.');
+  renderPerfRows(colorStatsList, buckets, 'Todavia no hay partidas registradas con este lider.', (key) => {
+    const matchesForColor = own.filter(m => {
+      const colors = leaderColors[m.liderRival] || [];
+      const keys = colors.length ? colors : ['X'];
+      return keys.includes(key);
+    });
+    openColorDetailModal(buckets[key].label, matchesForColor);
+  });
 }
 
 function renderLeaderBestWorst(own) {
@@ -2330,22 +2473,11 @@ function renderHistory(own) {
     return;
   }
   historyList.innerHTML = '';
-  const manoIcon = { Buena: '\uD83D\uDC4D', Mala: '\uD83D\uDC4E', Regular: '\u270B' };
-  const tipoLetter = { Casual: 'C', Ranked: 'R', Torneo: 'T', Entrenamiento: 'E' };
   own.slice().reverse().forEach(m => {
     const item = document.createElement('div');
     item.className = 'history-item';
     const isWin = m.resultado === 'Victoria';
-    let badges = '';
-    if (m.turno === 'Primero' || m.turno === 'Segundo') {
-      badges += '<span class="hbadge" title="' + m.turno + '">' + (m.turno === 'Primero' ? '1' : '2') + '</span>';
-    }
-    if (manoIcon[m.mano]) {
-      badges += '<span class="hbadge" title="Mano ' + m.mano.toLowerCase() + '">' + manoIcon[m.mano] + '</span>';
-    }
-    if (tipoLetter[m.tipo]) {
-      badges += '<span class="hbadge" title="' + m.tipo + '">' + tipoLetter[m.tipo] + '</span>';
-    }
+    const badges = matchBadgesHtml(m);
     item.innerHTML = `
       <div class="history-left">
         <span class="history-main">vs ${escapeHtml(m.liderRival)}</span>
@@ -2354,6 +2486,14 @@ function renderHistory(own) {
       <div class="history-badges">${badges}</div>
       <span class="result-box ${isWin ? 'win' : 'lose'}">${isWin ? 'V' : 'D'}</span>
     `;
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'edit-btn rename-leader-btn';
+    editBtn.setAttribute('aria-label', 'Editar partida');
+    editBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+    editBtn.addEventListener('click', () => openEditMatchModal(m));
+    item.appendChild(editBtn);
+
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
     delBtn.className = 'del-btn';
@@ -2897,15 +3037,13 @@ function renderLeaderPhoto() {
 
     const img = document.createElement('img');
     img.className = 'leader-photo';
-    img.referrerPolicy = 'no-referrer';
-    img.src = externalCardImageUrl(autoCode);
     img.alt = escapeHtml(autoCode);
-    img.onerror = () => { box.innerHTML = ''; box.appendChild(leaderUploadBtn('Toca para subir la foto del lider')); };
     // Si carga bien, la guarda en leaderPhotos (igual que una subida manual)
     // para que Registro y cualquier otra pantalla tambien la vean, no solo
     // Mazos. Mejor esfuerzo: si el CDN no permite leer la imagen por CORS,
     // se queda mostrandola en vivo aqui sin guardarla.
     img.onload = () => saveAutoLeaderPhoto(currentDeck.leader, img.src);
+    trySetCardImage(img, autoCode, () => { box.innerHTML = ''; box.appendChild(leaderUploadBtn('Toca para subir la foto del lider')); });
     wrap.appendChild(img);
     wrap.appendChild(leaderUploadBtn('Subir foto propia'));
     box.appendChild(wrap);
@@ -2959,9 +3097,41 @@ function placeholderCardSvg() {
 // matches every prefix we already validate (OP, ST, EB, PRB, P). This is
 // a best-effort third-party lookup: if it 404s or the service is down,
 // cardPhotoBox() falls back to the generic placeholder below.
-function externalCardImageUrl(code) {
+function externalCardImageUrl(code, size) {
   const set = code.split('-')[0];
-  return 'https://cards.oplaytcg.com/' + set + '/en/small/' + code + '.webp';
+  return 'https://cards.oplaytcg.com/' + set + '/en/' + (size || 'small') + '/' + code + '.webp';
+}
+
+// En este CDN, algunas cartas de OP14 y OP15 estan catalogadas bajo la
+// carpeta del booster extra con el que se repartieron (EB04) en vez de
+// bajo la de su propio set - el resto de cartas de esos sets si viven en
+// su carpeta normal, asi que esto se prueba solo como ultimo recurso.
+const CDN_EXTRA_SET_FOLDER = { OP14: 'EB04', OP15: 'EB04' };
+
+// Intenta, en orden: small del set propio, large del set propio, y (solo
+// para OP14/OP15) small y large de su booster extra - antes de rendirse.
+// Cada paso es gratis si falla: se comporta igual que antes de probarlo.
+function candidateCardImageUrls(code) {
+  const set = code.split('-')[0];
+  const urls = [externalCardImageUrl(code, 'small'), externalCardImageUrl(code, 'large')];
+  const extraFolder = CDN_EXTRA_SET_FOLDER[set];
+  if (extraFolder) {
+    urls.push('https://cards.oplaytcg.com/' + extraFolder + '/en/small/' + code + '.webp');
+    urls.push('https://cards.oplaytcg.com/' + extraFolder + '/en/large/' + code + '.webp');
+  }
+  return urls;
+}
+
+function trySetCardImage(img, code, onGiveUp) {
+  img.referrerPolicy = 'no-referrer';
+  const urls = candidateCardImageUrls(code);
+  let i = 0;
+  img.onerror = () => {
+    i++;
+    if (i >= urls.length) { onGiveUp(); return; }
+    img.src = urls[i];
+  };
+  img.src = urls[0];
 }
 
 function cardPhotoBox(code) {
@@ -2977,14 +3147,9 @@ function cardPhotoBox(code) {
     box.innerHTML = '<img src="' + manualPhoto + '" alt="' + escapeHtml(code) + '" />';
   } else if (isValidCardCodeForPhoto(code)) {
     const img = document.createElement('img');
-    // Some hotlink-protection setups reject requests whose Referer header
-    // points at a different site but allow ones with no Referer at all -
-    // this asks the browser to omit it entirely for this request.
-    img.referrerPolicy = 'no-referrer';
-    img.src = externalCardImageUrl(code);
     img.alt = escapeHtml(code);
     img.loading = 'lazy';
-    img.onerror = () => { box.innerHTML = placeholderCardSvg(); };
+    trySetCardImage(img, code, () => { box.innerHTML = placeholderCardSvg(); });
     box.appendChild(img);
   } else {
     box.innerHTML = placeholderCardSvg();
@@ -3020,9 +3185,9 @@ cardPhotoInput.addEventListener('change', async (e) => {
 // Poder/vidas/habilidad del lider activo: igual que la foto, hand-typed
 // una vez y compartido por todos los mazos que usan ese lider. Opcional,
 // no bloquea guardar el mazo.
-function leaderStatField(label, value, onEdit, colorStyle) {
+function leaderStatField(label, value, onEdit, colorStyle, circle) {
   const box = document.createElement('div');
-  box.className = 'ld-stat';
+  box.className = 'ld-stat' + (circle ? ' ld-stat-circle' : '');
   box.setAttribute('role', 'button');
   box.title = value ? 'Editar ' + label.toLowerCase() : 'Anadir ' + label.toLowerCase();
 
@@ -3051,10 +3216,8 @@ function leaderStatField(label, value, onEdit, colorStyle) {
   content.className = 'ld-stat-content';
   if (colorStyle) content.style.color = colorStyle.color;
   content.innerHTML =
-    '<p class="ld-num' + (value ? '' : ' empty') + '">' + escapeHtml(value || ('+ ' + label.toLowerCase())) + '</p>' +
-    '<p class="ld-lab">' + label + '</p>';
+    '<p class="ld-num' + (value ? '' : ' empty') + '">' + escapeHtml(value || ('+ ' + label.toLowerCase())) + '</p>';
   box.appendChild(content);
-
   box.addEventListener('click', onEdit);
   return box;
 }
@@ -3111,7 +3274,7 @@ function renderLeaderStats() {
   const vidasValue = stats.vidas !== undefined ? stats.vidas : defaultLeaderStat('vidas', currentDeck.leader);
 
   statsBox.appendChild(leaderStatField('Poder', poderValue, () => promptLeaderNumber('poder', 'Poder', poderValue), colorStyle));
-  statsBox.appendChild(leaderStatField('Vidas', vidasValue, () => promptLeaderNumber('vidas', 'Vidas', vidasValue), colorStyle));
+  statsBox.appendChild(leaderStatField('Vidas', vidasValue, () => promptLeaderNumber('vidas', 'Vidas', vidasValue), colorStyle, true));
 
   abilityBox.innerHTML = '';
   const ability = document.createElement('div');
@@ -3173,6 +3336,213 @@ leaderAbilitySaveBtn.addEventListener('click', () => {
   leaderAbilityOverlay.classList.remove('show');
 });
 
+// Editar una partida ya registrada: todo menos "Mi lider" (si quieren
+// cambiar ese, se borra el registro y se anade uno nuevo desde el
+// formulario normal). Reusa los mismos grupos de botones que el
+// formulario de Registro pero sin data-group, para no compartir estado
+// con el listener global de ahi (document.querySelectorAll mas abajo).
+const editMatchOverlay = document.getElementById('edit-match-overlay');
+const editMatchCloseBtn = document.getElementById('edit-match-close');
+const editMatchRivalSelect = document.getElementById('edit-match-rival-select');
+const editMatchGroups = {
+  tipo: document.getElementById('edit-match-tipo'),
+  turno: document.getElementById('edit-match-turno'),
+  mano: document.getElementById('edit-match-mano'),
+  resultado: document.getElementById('edit-match-resultado')
+};
+const editMatchSaveBtn = document.getElementById('edit-match-save-btn');
+let editMatchId = null;
+let editSelections = { tipo: null, turno: null, mano: null, resultado: null };
+
+Object.keys(editMatchGroups).forEach(key => {
+  editMatchGroups[key].querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      editSelections[key] = btn.dataset.value;
+      editMatchGroups[key].querySelectorAll('button').forEach(b => b.classList.toggle('selected', b === btn));
+    });
+  });
+});
+
+function openEditMatchModal(match) {
+  editMatchId = match.id;
+  editSelections = { tipo: match.tipo, turno: match.turno, mano: match.mano, resultado: match.resultado };
+
+  editMatchRivalSelect.innerHTML = '';
+  sortedLeaders().forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    editMatchRivalSelect.appendChild(opt);
+  });
+  editMatchRivalSelect.value = match.liderRival;
+
+  Object.keys(editMatchGroups).forEach(key => {
+    editMatchGroups[key].querySelectorAll('button').forEach(b => {
+      b.classList.toggle('selected', b.dataset.value === editSelections[key]);
+    });
+  });
+
+  editMatchOverlay.classList.add('show');
+}
+
+editMatchCloseBtn.addEventListener('click', () => editMatchOverlay.classList.remove('show'));
+editMatchOverlay.addEventListener('click', (e) => {
+  if (e.target === editMatchOverlay) editMatchOverlay.classList.remove('show');
+});
+
+editMatchSaveBtn.addEventListener('click', () => {
+  if (!editSelections.tipo || !editSelections.turno || !editSelections.mano || !editSelections.resultado) {
+    showToast('Completa todos los campos');
+    return;
+  }
+  const match = matches.find(m => m.id === editMatchId);
+  if (match) {
+    match.liderRival = editMatchRivalSelect.value;
+    match.tipo = editSelections.tipo;
+    match.turno = editSelections.turno;
+    match.mano = editSelections.mano;
+    match.resultado = editSelections.resultado;
+    saveMatches();
+    showToast('Partida actualizada');
+    updateStats(selectedLeader);
+  }
+  editMatchOverlay.classList.remove('show');
+});
+
+// Detalle de "Rendimiento por color rival": al tocar una fila de color se
+// abre esto con un mini-ranking por lider concreto de ese color. Cada fila
+// de lider es un acordeon - al tocarla despliega debajo el historial de
+// partidas solo contra ese lider (de solo lectura; editar/borrar se sigue
+// haciendo desde el Historial normal). Solo una fila abierta a la vez.
+const colorDetailOverlay = document.getElementById('color-detail-overlay');
+const colorDetailClose = document.getElementById('color-detail-close');
+const colorDetailTitle = document.getElementById('color-detail-title');
+const colorDetailLeaders = document.getElementById('color-detail-leaders');
+const colorDetailHeroPct = document.getElementById('color-detail-hero-pct');
+const colorDetailHeroRecord = document.getElementById('color-detail-hero-record');
+const CHEVRON_SVG = '<svg class="chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+
+function renderColorDetailLeaders(matchesForColor) {
+  const buckets = {};
+  matchesForColor.forEach(m => {
+    if (!buckets[m.liderRival]) buckets[m.liderRival] = { wins: 0, losses: 0, matches: [] };
+    buckets[m.liderRival].matches.push(m);
+    if (m.resultado === 'Victoria') buckets[m.liderRival].wins++;
+    else buckets[m.liderRival].losses++;
+  });
+  const names = Object.keys(buckets).sort((a, b) => (buckets[b].wins + buckets[b].losses) - (buckets[a].wins + buckets[a].losses));
+
+  colorDetailLeaders.innerHTML = '';
+  if (!names.length) {
+    colorDetailLeaders.innerHTML = '<p class="empty">Sin partidas.</p>';
+    return;
+  }
+
+  names.forEach((name, i) => {
+    const b = buckets[name];
+    const total = b.wins + b.losses;
+    const pct = Math.round((b.wins / total) * 100);
+
+    const row = document.createElement('div');
+    // Alterna con su "detail" (otro div hermano), asi que el ":last-child"
+    // que normalmente le quita el borde a la ultima fila de .perf-row no
+    // aplica aqui - se marca a mano en la ultima.
+    row.className = 'perf-row color-detail-leader-row' + (i === names.length - 1 ? ' last' : '');
+    row.setAttribute('role', 'button');
+    row.innerHTML = `
+      <div class="perf-left">
+        <span class="perf-name">${escapeHtml(name)}</span>
+        ${colorBadgesHtml(leaderColors[name] || [])}
+      </div>
+      <div class="perf-right" style="display:flex; align-items:center; gap:8px;">
+        <div>
+          <p class="perf-pct ${pct >= 50 ? 'good' : 'bad'}">${pct}%</p>
+          <p class="perf-sub">${b.wins}V - ${b.losses}D</p>
+        </div>
+        ${CHEVRON_SVG}
+      </div>
+    `;
+
+    const detail = document.createElement('div');
+    detail.className = 'color-detail-leader-matches';
+
+    // Las rondas de torneo no tienen turno guardado (turno: ''), asi que no
+    // cuentan como "primero" ni "segundo" - si se sumaran al total de esta
+    // fila, Partidas no cuadraria con Yendo primero + Yendo segundo. Se usa
+    // el mismo total de esos dos para que siempre sumen bien.
+    const firstM = b.matches.filter(m => m.turno === 'Primero');
+    const secondM = b.matches.filter(m => m.turno === 'Segundo');
+    const totalConTurno = firstM.length + secondM.length;
+    const winPct = (list) => list.length ? Math.round((list.filter(m => m.resultado === 'Victoria').length / list.length) * 100) + '%' : '-';
+    const stats = document.createElement('div');
+    stats.className = 'stats-row color-detail-leader-stats';
+    stats.innerHTML = `
+      <div class="stat">
+        <p class="num">${totalConTurno}</p>
+        <p class="lab">Partidas${totalConTurno !== total ? ' (sin torneos)' : ''}</p>
+      </div>
+      <div class="stat">
+        <p class="num">${winPct(firstM)}</p>
+        <p class="lab">Yendo primero</p>
+      </div>
+      <div class="stat">
+        <p class="num">${winPct(secondM)}</p>
+        <p class="lab">Yendo segundo</p>
+      </div>
+    `;
+    detail.appendChild(stats);
+
+    b.matches.slice().reverse().forEach(m => {
+      const isWin = m.resultado === 'Victoria';
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      // El rival ya se sabe por la fila que se despliega - no hace falta
+      // repetirlo, la fecha pasa a ser el texto principal de cada linea.
+      item.innerHTML = `
+        <div class="history-left">
+          <span class="history-main">${m.fecha}</span>
+        </div>
+        <div class="history-badges">${matchBadgesHtml(m)}</div>
+        <span class="result-box ${isWin ? 'win' : 'lose'}">${isWin ? 'V' : 'D'}</span>
+      `;
+      detail.appendChild(item);
+    });
+
+    row.addEventListener('click', () => {
+      const wasOpen = row.classList.contains('open');
+      colorDetailLeaders.querySelectorAll('.color-detail-leader-row.open').forEach(r => r.classList.remove('open'));
+      colorDetailLeaders.querySelectorAll('.color-detail-leader-matches.show').forEach(d => d.classList.remove('show'));
+      if (!wasOpen) {
+        row.classList.add('open');
+        detail.classList.add('show');
+      }
+    });
+
+    colorDetailLeaders.appendChild(row);
+    colorDetailLeaders.appendChild(detail);
+  });
+}
+
+function openColorDetailModal(colorLabel, matchesForColor) {
+  colorDetailTitle.textContent = 'vs ' + colorLabel;
+
+  const wins = matchesForColor.filter(m => m.resultado === 'Victoria').length;
+  const losses = matchesForColor.length - wins;
+  const pct = matchesForColor.length ? Math.round((wins / matchesForColor.length) * 100) : 0;
+  colorDetailHeroPct.textContent = pct + '%';
+  colorDetailHeroPct.style.color = pct >= 50 ? 'var(--success)' : 'var(--danger)';
+  colorDetailHeroRecord.textContent = wins + 'V - ' + losses + 'D';
+
+  renderColorDetailLeaders(matchesForColor);
+
+  colorDetailOverlay.classList.add('show');
+}
+
+colorDetailClose.addEventListener('click', () => colorDetailOverlay.classList.remove('show'));
+colorDetailOverlay.addEventListener('click', (e) => {
+  if (e.target === colorDetailOverlay) colorDetailOverlay.classList.remove('show');
+});
+
 // A hand-typed, optional label per card code (e.g. "OP01-016" -> "Monkey
 // D. Luffy"), shown under the code to make the list easier to read at a
 // glance. Shared across every deck, same as the photo - naming a card
@@ -3206,7 +3576,10 @@ function renderDeckCardsList() {
 
   const nonLeaderCards = currentDeck.cards.slice(1);
 
-  if (!nonLeaderCards.length) {
+  // Sin lider elegido todavia no hay a que mazo enganchar una carta suelta.
+  // Con lider (aunque cards siga vacio porque nunca se le pego su lista)
+  // ya se puede usar el boton + para empezar a anadir una a una.
+  if (!nonLeaderCards.length && !currentDeck.leader) {
     deckCardsList.innerHTML = '<p class="empty">Todavia no has anadido cartas.</p>';
     return;
   }
@@ -3267,7 +3640,68 @@ function renderDeckCardsList() {
     grid.appendChild(cell);
   });
 
+  if (currentDeck.leader && total < MAX_DECK_SIZE) {
+    grid.appendChild(addCardCell());
+  }
+
   deckCardsList.appendChild(grid);
+}
+
+// Celda "+" del mismo tamano que una carta, al final de la rejilla,
+// para anadir una suelta sin tener que abrir "Pegar lista".
+function addCardCell() {
+  const cell = document.createElement('button');
+  cell.type = 'button';
+  cell.className = 'card-cell card-cell-add';
+  cell.setAttribute('aria-label', 'Anadir carta al mazo');
+  cell.title = 'Anadir carta al mazo';
+  cell.innerHTML = '<span class="card-cell-add-plus">+</span>';
+  cell.addEventListener('click', promptAddSingleCard);
+  return cell;
+}
+
+// Mismo formato "NxCODIGO" que "Pegar lista", pero siempre como carta
+// normal - nunca como slot del lider (ese ya esta fijo en cards[0]).
+function promptAddSingleCard() {
+  const input = window.prompt('Cantidad y codigo (ej. 2xOP01-016):', '1x');
+  if (input === null) return;
+  const trimmed = input.trim();
+  if (!trimmed) return;
+  const match = trimmed.match(/^(\d+)\s*[xX]\s*([A-Za-z0-9-]+)$/);
+  const qtyWanted = match ? parseInt(match[1], 10) : 0;
+  if (!match || !qtyWanted) {
+    showToast('Formato no valido, usa por ejemplo 2xOP01-016');
+    return;
+  }
+  const code = match[2].toUpperCase();
+
+  // Si el mazo todavia no tiene el slot del lider (nunca se le pego su
+  // lista), lo crea ahora - como haria "Pegar lista" - para no pisarlo
+  // con esta carta nueva.
+  if (!currentDeck.cards.length) {
+    currentDeck.cards.push({ code: leaderCardCodes[currentDeck.leader] || '', qty: 1 });
+  }
+
+  const remaining = MAX_DECK_SIZE - deckTotalCards();
+  if (remaining <= 0) {
+    showToast('El mazo ya tiene el maximo de ' + MAX_DECK_SIZE + ' cartas');
+    return;
+  }
+
+  const nonLeaderCards = currentDeck.cards.slice(1);
+  const existing = nonLeaderCards.find(c => c.code === code);
+  const currentQty = existing ? existing.qty : 0;
+  const cap = maxCopiesFor(code);
+  const target = Math.min(currentQty + qtyWanted, cap, currentQty + remaining);
+  const qty = target - currentQty;
+  if (qty <= 0) {
+    showToast('Ya tienes el maximo de copias de esa carta');
+    return;
+  }
+
+  if (existing) existing.qty += qty;
+  else currentDeck.cards.push({ code: code, qty: qty });
+  renderDeckCardsList();
 }
 
 // Adjusts a single card's copies by delta (+1/-1), respecting the per-card
@@ -3352,12 +3786,23 @@ function parseBulkList(text) {
   let added = 0;
   let skipped = 0;
   let capped = 0;
-  const isFirstEver = currentDeck.cards.length === 0;
+  // "Vacio" incluye el caso de que solo quede el lider (cards.length 1):
+  // pasa cuando se borran a mano el resto de cartas y se vuelve a pegar
+  // una lista nueva - si no, esa primera linea (el lider) se contaba como
+  // una carta normal y le sumaba una copia invisible de mas a su cantidad.
+  const isFirstEver = currentDeck.cards.length <= 1;
   let isFirstLineOfThisPaste = true;
 
   lines.forEach(line => {
     const trimmed = line.trim();
     if (!trimmed) return;
+    // La "primera linea" se consume aqui, antes de comprobar el formato -
+    // si no, una primera linea mal pegada (incompleta) dejaba la marca
+    // pendiente y la siguiente linea valida (una carta normal cualquiera)
+    // se trataba por error como el slot del lider.
+    const isLeaderSlot = isFirstEver && isFirstLineOfThisPaste;
+    isFirstLineOfThisPaste = false;
+
     const match = trimmed.match(/^(\d+)\s*[xX]\s*([A-Za-z0-9-]+)$/);
     let qty = match ? parseInt(match[1], 10) : 0;
     if (!match || !qty || qty < 1) {
@@ -3365,32 +3810,34 @@ function parseBulkList(text) {
       return;
     }
     const code = match[2].toUpperCase();
-    const isLeaderSlot = isFirstEver && isFirstLineOfThisPaste;
-    isFirstLineOfThisPaste = false;
-
-    const existing = currentDeck.cards.find(c => c.code === code);
-    const currentQty = existing ? existing.qty : 0;
 
     if (isLeaderSlot) {
-      qty = 1;
       // Guarda el codigo de la carta de lider para poder intentar cargar
       // su foto desde el CDN (renderLeaderPhoto se encarga de usarlo).
       if (currentDeck.leader && isValidCardCodeForPhoto(code)) {
         leaderCardCodes[currentDeck.leader] = code;
         saveLeaderCardCodes();
       }
-    } else {
-      const cap = maxCopiesFor(code);
-      let target = currentQty + qty;
-      if (target > cap) {
-        target = cap;
-        capped++;
-      }
-      qty = target - currentQty;
-      if (qty <= 0) {
-        skipped++;
-        return;
-      }
+      // Reemplaza el slot del lider (si ya habia uno) en vez de sumarle
+      // una copia encima.
+      if (currentDeck.cards.length) currentDeck.cards[0] = { code: code, qty: 1 };
+      else currentDeck.cards.push({ code: code, qty: 1 });
+      added++;
+      return;
+    }
+
+    const existing = currentDeck.cards.find(c => c.code === code);
+    const currentQty = existing ? existing.qty : 0;
+    const cap = maxCopiesFor(code);
+    let target = currentQty + qty;
+    if (target > cap) {
+      target = cap;
+      capped++;
+    }
+    qty = target - currentQty;
+    if (qty <= 0) {
+      skipped++;
+      return;
     }
 
     const remaining = MAX_DECK_SIZE - deckTotalCards();
