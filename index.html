@@ -777,7 +777,10 @@
       <h1>One Piece TCG</h1>
       <p class="sub">Registro de partidas y mazos</p>
     </div>
-    <button class="modal-btn" id="open-torneos-btn" type="button" style="flex-shrink:0;">Torneos</button>
+    <div style="display:flex; gap:8px; flex-shrink:0;">
+      <button class="modal-btn" id="open-bulk-matches-btn" type="button">Varias partidas</button>
+      <button class="modal-btn" id="open-torneos-btn" type="button">Torneos</button>
+    </div>
   </div>
   <div class="debug-banner" id="debug-banner"></div>
 
@@ -1044,6 +1047,36 @@
       <p class="label" style="margin-bottom:10px;">Historial de torneos</p>
       <div id="torneo-history-list"><p class="empty">Cargando...</p></div>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="bulk-matches-overlay">
+  <div class="modal-card torneos-modal-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <p class="modal-title" style="margin:0;">Registrar varias partidas</p>
+      <button class="modal-btn" id="bulk-matches-close" type="button">Cerrar</button>
+    </div>
+
+    <div class="section-gap">
+      <p class="label">Mi lider (para todas)</p>
+      <div class="combo-wrap">
+        <input type="text" id="bulk-matches-leader-search" class="select" placeholder="Buscar lider..." autocomplete="off" style="margin-bottom:6px;" />
+        <div class="combo-dropdown" id="bulk-matches-leader-dropdown"></div>
+      </div>
+      <select class="select" id="bulk-matches-leader-select" style="display:none;"></select>
+    </div>
+
+    <div class="section-gap">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <p class="label" style="margin-bottom:0;">Partidas</p>
+        <p style="font-size:13px; font-weight:600;" id="bulk-matches-tally">0V - 0D</p>
+      </div>
+      <div id="bulk-matches-rows"></div>
+      <button class="link-btn" id="bulk-matches-add-row-btn" type="button" style="margin-top:6px;">+ Anadir partida</button>
+    </div>
+
+    <p class="error" id="bulk-matches-error">Elige tu lider y completa todas las filas antes de guardar.</p>
+    <button class="save-btn" id="bulk-matches-save-btn" type="button" style="width:100%;">Guardar todas</button>
   </div>
 </div>
 
@@ -3407,6 +3440,212 @@ editMatchSaveBtn.addEventListener('click', () => {
     updateStats(selectedLeader);
   }
   editMatchOverlay.classList.remove('show');
+});
+
+// Registrar varias partidas sueltas de golpe: un lider propio para todas
+// y N filas con lider rival + tipo + turno + mano + resultado, cada una
+// se guarda como una partida normal independiente (mismo formato que el
+// formulario de Registro). Reusa los mismos grupos de botones pero sin
+// data-group, igual que el modal de editar partida.
+function newBulkMatchRow() {
+  return { rival: '', tipo: null, turno: null, mano: null, resultado: null };
+}
+let bulkMatchesLeader = '';
+let bulkMatchesRows = [newBulkMatchRow()];
+
+const bulkMatchesOverlay = document.getElementById('bulk-matches-overlay');
+const bulkMatchesCloseBtn = document.getElementById('bulk-matches-close');
+const bulkMatchesLeaderSearch = document.getElementById('bulk-matches-leader-search');
+const bulkMatchesLeaderDropdown = document.getElementById('bulk-matches-leader-dropdown');
+const bulkMatchesLeaderSelect = document.getElementById('bulk-matches-leader-select');
+const bulkMatchesRowsEl = document.getElementById('bulk-matches-rows');
+const bulkMatchesAddRowBtn = document.getElementById('bulk-matches-add-row-btn');
+const bulkMatchesTallyEl = document.getElementById('bulk-matches-tally');
+const bulkMatchesError = document.getElementById('bulk-matches-error');
+const bulkMatchesSaveBtn = document.getElementById('bulk-matches-save-btn');
+
+function renderBulkMatchesLeaderSelect() {
+  bulkMatchesLeaderSelect.innerHTML = '';
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = '-- Elige tu lider --';
+  bulkMatchesLeaderSelect.appendChild(placeholder);
+  sortedLeaders().forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    opt.dataset.search = leaderSearchText(name);
+    bulkMatchesLeaderSelect.appendChild(opt);
+  });
+  bulkMatchesLeaderSelect.value = bulkMatchesLeader;
+  bulkMatchesLeaderSearch.value = bulkMatchesLeaderSelect.value || '';
+}
+bulkMatchesLeaderSelect.addEventListener('change', (e) => { bulkMatchesLeader = e.target.value; });
+createLeaderCombo(bulkMatchesLeaderSearch, bulkMatchesLeaderDropdown, bulkMatchesLeaderSelect);
+
+function bulkMatchesTally() {
+  let wins = 0, losses = 0;
+  bulkMatchesRows.forEach(r => {
+    if (r.resultado === 'Victoria') wins++;
+    else if (r.resultado === 'Derrota') losses++;
+  });
+  return { wins: wins, losses: losses };
+}
+function renderBulkMatchesTally() {
+  const t = bulkMatchesTally();
+  bulkMatchesTallyEl.innerHTML = '<span style="color:var(--success);">' + t.wins + 'V</span> - <span style="color:var(--danger);">' + t.losses + 'D</span>';
+}
+
+function bulkMatchButtonGroup(row, field, options, groupClass) {
+  const wrap = document.createElement('div');
+  wrap.className = groupClass;
+  wrap.style.marginBottom = '8px';
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = opt.cls || 'btn';
+    if (row[field] === opt.value) btn.classList.add('selected');
+    btn.textContent = opt.label;
+    btn.addEventListener('click', () => {
+      row[field] = opt.value;
+      renderBulkMatchesRows();
+      if (field === 'resultado') renderBulkMatchesTally();
+    });
+    wrap.appendChild(btn);
+  });
+  return wrap;
+}
+
+function renderBulkMatchesRows() {
+  document.querySelectorAll('.bulk-match-combo-dropdown').forEach(el => el.remove());
+  bulkMatchesRowsEl.innerHTML = '';
+  bulkMatchesRows.forEach((row, index) => {
+    const box = document.createElement('div');
+    box.className = 'torneo-round';
+
+    const top = document.createElement('div');
+    top.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;';
+    const label = document.createElement('p');
+    label.className = 'torneo-round-label';
+    label.style.margin = '0';
+    label.textContent = 'Partida ' + (index + 1);
+    top.appendChild(label);
+    if (bulkMatchesRows.length > 1) {
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'link-btn';
+      delBtn.style.cssText = 'color:var(--danger); font-size:11px; padding:0;';
+      delBtn.textContent = 'Quitar';
+      delBtn.addEventListener('click', () => {
+        bulkMatchesRows.splice(index, 1);
+        renderBulkMatchesRows();
+        renderBulkMatchesTally();
+      });
+      top.appendChild(delBtn);
+    }
+    box.appendChild(top);
+
+    const comboWrap = document.createElement('div');
+    comboWrap.className = 'combo-wrap';
+    comboWrap.style.marginBottom = '8px';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'select';
+    input.placeholder = '-- Lider rival --';
+    input.autocomplete = 'off';
+    input.style.cssText = 'font-size:13px; padding:7px; width:100%;';
+    input.value = row.rival || '';
+    comboWrap.appendChild(input);
+    const dropdown = document.createElement('div');
+    dropdown.className = 'combo-dropdown bulk-match-combo-dropdown';
+    comboWrap.appendChild(dropdown);
+    const select = document.createElement('select');
+    select.style.display = 'none';
+    const ph = document.createElement('option');
+    ph.value = '';
+    ph.textContent = '-- Lider rival --';
+    select.appendChild(ph);
+    sortedLeaders().forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+    select.value = row.rival;
+    select.addEventListener('change', (e) => { row.rival = e.target.value; });
+    comboWrap.appendChild(select);
+    createLeaderCombo(input, dropdown, select);
+    box.appendChild(comboWrap);
+
+    box.appendChild(bulkMatchButtonGroup(row, 'tipo', [
+      { value: 'Casual', label: 'Casual' },
+      { value: 'Ranked', label: 'Ranked' },
+      { value: 'Entrenamiento', label: 'Entrenamiento' }
+    ], 'row3'));
+    box.appendChild(bulkMatchButtonGroup(row, 'turno', [
+      { value: 'Primero', label: 'Primero' },
+      { value: 'Segundo', label: 'Segundo' }
+    ], 'row2'));
+    box.appendChild(bulkMatchButtonGroup(row, 'mano', [
+      { value: 'Buena', label: 'Buena' },
+      { value: 'Regular', label: 'Regular' },
+      { value: 'Mala', label: 'Mala' }
+    ], 'row3'));
+    box.appendChild(bulkMatchButtonGroup(row, 'resultado', [
+      { value: 'Victoria', label: 'Gane', cls: 'btn-win' },
+      { value: 'Derrota', label: 'Perdi', cls: 'btn-lose' }
+    ], 'row2'));
+
+    bulkMatchesRowsEl.appendChild(box);
+  });
+}
+
+bulkMatchesAddRowBtn.addEventListener('click', () => {
+  bulkMatchesRows.push(newBulkMatchRow());
+  renderBulkMatchesRows();
+});
+
+function openBulkMatchesModal() {
+  bulkMatchesLeader = selectedLeader || '';
+  bulkMatchesRows = [newBulkMatchRow()];
+  bulkMatchesError.style.display = 'none';
+  renderBulkMatchesLeaderSelect();
+  renderBulkMatchesRows();
+  renderBulkMatchesTally();
+  bulkMatchesOverlay.classList.add('show');
+}
+document.getElementById('open-bulk-matches-btn').addEventListener('click', openBulkMatchesModal);
+bulkMatchesCloseBtn.addEventListener('click', () => bulkMatchesOverlay.classList.remove('show'));
+bulkMatchesOverlay.addEventListener('click', (e) => {
+  if (e.target === bulkMatchesOverlay) bulkMatchesOverlay.classList.remove('show');
+});
+
+bulkMatchesSaveBtn.addEventListener('click', () => {
+  const rowsComplete = bulkMatchesRows.length && bulkMatchesRows.every(r => r.rival && r.tipo && r.turno && r.mano && r.resultado);
+  if (!bulkMatchesLeader || !rowsComplete) {
+    bulkMatchesError.style.display = 'block';
+    return;
+  }
+  bulkMatchesError.style.display = 'none';
+
+  const fecha = new Date().toISOString().slice(0, 10);
+  bulkMatchesRows.forEach(r => {
+    matches.push({
+      id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 6),
+      miLider: bulkMatchesLeader,
+      liderRival: r.rival,
+      turno: r.turno,
+      mano: r.mano,
+      resultado: r.resultado,
+      tipo: r.tipo,
+      fecha: fecha
+    });
+  });
+  saveMatches();
+  showToast(bulkMatchesRows.length + ' partidas guardadas');
+  updateStats(selectedLeader);
+
+  bulkMatchesOverlay.classList.remove('show');
 });
 
 // Detalle de "Rendimiento por color rival": al tocar una fila de color se
