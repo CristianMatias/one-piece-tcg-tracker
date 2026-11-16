@@ -3529,10 +3529,11 @@ function renderBulkMatchesTally() {
   bulkMatchesTallyEl.innerHTML = '<span style="color:var(--success);">' + t.wins + 'V</span> - <span style="color:var(--danger);">' + t.losses + 'D</span>';
 }
 
+// Solo lo esencial para un registro rapido de varias partidas - tipo y
+// mano se guardan con un valor por defecto (ver bulkMatchesSaveBtn) en
+// vez de pedirlos aqui.
 const BULK_MATCH_FIELDS = [
-  { field: 'tipo', placeholder: 'Tipo', options: ['Casual', 'Ranked', 'Entrenamiento'] },
   { field: 'turno', placeholder: 'Turno', options: ['Primero', 'Segundo'] },
-  { field: 'mano', placeholder: 'Mano', options: ['Buena', 'Regular', 'Mala'] },
   { field: 'resultado', placeholder: 'Result.', options: [{ value: 'Victoria', label: 'Gane' }, { value: 'Derrota', label: 'Perdi' }] }
 ];
 
@@ -3646,7 +3647,7 @@ bulkMatchesOverlay.addEventListener('click', (e) => {
 });
 
 bulkMatchesSaveBtn.addEventListener('click', () => {
-  const rowsComplete = bulkMatchesRows.length && bulkMatchesRows.every(r => r.rival && r.tipo && r.turno && r.mano && r.resultado);
+  const rowsComplete = bulkMatchesRows.length && bulkMatchesRows.every(r => r.rival && r.turno && r.resultado);
   if (!bulkMatchesLeader || !rowsComplete) {
     bulkMatchesError.style.display = 'block';
     return;
@@ -3660,9 +3661,10 @@ bulkMatchesSaveBtn.addEventListener('click', () => {
       miLider: bulkMatchesLeader,
       liderRival: r.rival,
       turno: r.turno,
-      mano: r.mano,
+      // No se piden aqui - Casual/Regular como valor por defecto razonable.
+      mano: r.mano || 'Regular',
       resultado: r.resultado,
-      tipo: r.tipo,
+      tipo: r.tipo || 'Casual',
       fecha: fecha
     });
   });
