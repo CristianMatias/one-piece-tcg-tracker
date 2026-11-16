@@ -566,6 +566,39 @@
     font-family: inherit;
   }
   .select:focus { outline: none; border-color: var(--accent); }
+  .bulk-match-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .bulk-match-row:last-child { border-bottom: none; }
+  .bulk-match-rival { flex: 1 1 130px; min-width: 110px; }
+  .bulk-match-mini-select {
+    flex: 1 1 78px;
+    min-width: 70px;
+    padding: 7px 4px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 11.5px;
+    font-family: inherit;
+  }
+  .bulk-match-mini-select:focus { outline: none; border-color: var(--accent); }
+  .bulk-match-del {
+    flex: 0 0 auto;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+  }
+  .bulk-match-del:hover { color: var(--danger); }
   .modal-overlay {
     display: none;
     position: fixed;
@@ -3496,64 +3529,60 @@ function renderBulkMatchesTally() {
   bulkMatchesTallyEl.innerHTML = '<span style="color:var(--success);">' + t.wins + 'V</span> - <span style="color:var(--danger);">' + t.losses + 'D</span>';
 }
 
-function bulkMatchButtonGroup(row, field, options, groupClass) {
-  const wrap = document.createElement('div');
-  wrap.className = groupClass;
-  wrap.style.marginBottom = '8px';
-  options.forEach(opt => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = opt.cls || 'btn';
-    if (row[field] === opt.value) btn.classList.add('selected');
-    btn.textContent = opt.label;
-    btn.addEventListener('click', () => {
-      row[field] = opt.value;
-      renderBulkMatchesRows();
-      if (field === 'resultado') renderBulkMatchesTally();
-    });
-    wrap.appendChild(btn);
+const BULK_MATCH_FIELDS = [
+  { field: 'tipo', placeholder: 'Tipo', options: ['Casual', 'Ranked', 'Entrenamiento'] },
+  { field: 'turno', placeholder: 'Turno', options: ['Primero', 'Segundo'] },
+  { field: 'mano', placeholder: 'Mano', options: ['Buena', 'Regular', 'Mala'] },
+  { field: 'resultado', placeholder: 'Result.', options: [{ value: 'Victoria', label: 'Gane' }, { value: 'Derrota', label: 'Perdi' }] }
+];
+
+function bulkMatchMiniSelect(row, spec) {
+  const select = document.createElement('select');
+  select.className = 'bulk-match-mini-select';
+  const ph = document.createElement('option');
+  ph.value = '';
+  ph.textContent = spec.placeholder;
+  select.appendChild(ph);
+  spec.options.forEach(opt => {
+    const value = typeof opt === 'string' ? opt : opt.value;
+    const label = typeof opt === 'string' ? opt : opt.label;
+    const el = document.createElement('option');
+    el.value = value;
+    el.textContent = label;
+    select.appendChild(el);
   });
-  return wrap;
+  select.value = row[spec.field] || '';
+  const recolor = () => {
+    select.style.color = spec.field !== 'resultado' ? '' : (row.resultado === 'Victoria' ? 'var(--success)' : row.resultado === 'Derrota' ? 'var(--danger)' : '');
+  };
+  recolor();
+  select.addEventListener('change', (e) => {
+    row[spec.field] = e.target.value;
+    recolor();
+    if (spec.field === 'resultado') renderBulkMatchesTally();
+  });
+  return select;
 }
 
+// Una linea por partida: lider rival (buscador) + 4 selects compactos +
+// quitar fila. Antes cada partida era una tarjeta con 4 grupos de botones
+// grandes (mucho scroll para unas pocas partidas); los selects ocupan una
+// sola linea y no hace falta volver a pintar la fila entera en cada cambio.
 function renderBulkMatchesRows() {
   document.querySelectorAll('.bulk-match-combo-dropdown').forEach(el => el.remove());
   bulkMatchesRowsEl.innerHTML = '';
   bulkMatchesRows.forEach((row, index) => {
-    const box = document.createElement('div');
-    box.className = 'torneo-round';
-
-    const top = document.createElement('div');
-    top.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;';
-    const label = document.createElement('p');
-    label.className = 'torneo-round-label';
-    label.style.margin = '0';
-    label.textContent = 'Partida ' + (index + 1);
-    top.appendChild(label);
-    if (bulkMatchesRows.length > 1) {
-      const delBtn = document.createElement('button');
-      delBtn.type = 'button';
-      delBtn.className = 'link-btn';
-      delBtn.style.cssText = 'color:var(--danger); font-size:11px; padding:0;';
-      delBtn.textContent = 'Quitar';
-      delBtn.addEventListener('click', () => {
-        bulkMatchesRows.splice(index, 1);
-        renderBulkMatchesRows();
-        renderBulkMatchesTally();
-      });
-      top.appendChild(delBtn);
-    }
-    box.appendChild(top);
+    const line = document.createElement('div');
+    line.className = 'bulk-match-row';
 
     const comboWrap = document.createElement('div');
-    comboWrap.className = 'combo-wrap';
-    comboWrap.style.marginBottom = '8px';
+    comboWrap.className = 'combo-wrap bulk-match-rival';
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'select';
-    input.placeholder = '-- Lider rival --';
+    input.placeholder = 'Lider rival';
     input.autocomplete = 'off';
-    input.style.cssText = 'font-size:13px; padding:7px; width:100%;';
+    input.style.cssText = 'font-size:12px; padding:7px 8px; width:100%;';
     input.value = row.rival || '';
     comboWrap.appendChild(input);
     const dropdown = document.createElement('div');
@@ -3563,7 +3592,7 @@ function renderBulkMatchesRows() {
     select.style.display = 'none';
     const ph = document.createElement('option');
     ph.value = '';
-    ph.textContent = '-- Lider rival --';
+    ph.textContent = 'Lider rival';
     select.appendChild(ph);
     sortedLeaders().forEach(name => {
       const opt = document.createElement('option');
@@ -3575,28 +3604,24 @@ function renderBulkMatchesRows() {
     select.addEventListener('change', (e) => { row.rival = e.target.value; });
     comboWrap.appendChild(select);
     createLeaderCombo(input, dropdown, select);
-    box.appendChild(comboWrap);
+    line.appendChild(comboWrap);
 
-    box.appendChild(bulkMatchButtonGroup(row, 'tipo', [
-      { value: 'Casual', label: 'Casual' },
-      { value: 'Ranked', label: 'Ranked' },
-      { value: 'Entrenamiento', label: 'Entrenamiento' }
-    ], 'row3'));
-    box.appendChild(bulkMatchButtonGroup(row, 'turno', [
-      { value: 'Primero', label: 'Primero' },
-      { value: 'Segundo', label: 'Segundo' }
-    ], 'row2'));
-    box.appendChild(bulkMatchButtonGroup(row, 'mano', [
-      { value: 'Buena', label: 'Buena' },
-      { value: 'Regular', label: 'Regular' },
-      { value: 'Mala', label: 'Mala' }
-    ], 'row3'));
-    box.appendChild(bulkMatchButtonGroup(row, 'resultado', [
-      { value: 'Victoria', label: 'Gane', cls: 'btn-win' },
-      { value: 'Derrota', label: 'Perdi', cls: 'btn-lose' }
-    ], 'row2'));
+    BULK_MATCH_FIELDS.forEach(spec => line.appendChild(bulkMatchMiniSelect(row, spec)));
 
-    bulkMatchesRowsEl.appendChild(box);
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'bulk-match-del';
+    delBtn.title = 'Quitar partida';
+    delBtn.textContent = '×';
+    delBtn.addEventListener('click', () => {
+      bulkMatchesRows.splice(index, 1);
+      if (!bulkMatchesRows.length) bulkMatchesRows.push(newBulkMatchRow());
+      renderBulkMatchesRows();
+      renderBulkMatchesTally();
+    });
+    line.appendChild(delBtn);
+
+    bulkMatchesRowsEl.appendChild(line);
   });
 }
 
