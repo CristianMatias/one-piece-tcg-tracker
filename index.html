@@ -612,8 +612,8 @@
     font-family: inherit;
   }
   .colors-overlay .modal-card {
-    max-width: 380px;
-    max-height: 80vh;
+    max-width: 460px;
+    max-height: 85vh;
     display: flex;
     flex-direction: column;
   }
@@ -649,31 +649,47 @@
   .colors-list {
     overflow-y: auto;
     margin: 4px 0 14px;
-  }
-  .color-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 9px 0;
-    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
-  .color-row:last-child { border-bottom: none; }
-  .color-row-name { font-size: 13px; flex: 1; }
-  .rename-leader-btn {
+  .leader-grid-card {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .leader-grid-photo {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .leader-grid-photo img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
+  .leader-grid-photo-empty { width: 100%; height: 100%; background: none; border: none; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer; }
+  .leader-grid-name-row { display: flex; align-items: center; gap: 0; }
+  .color-row-name { font-size: 12.5px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rename-leader-btn, .delete-leader-btn {
     display: flex;
     align-items: center;
     justify-content: center;
     background: none;
     border: none;
     color: var(--text-muted);
-    padding: 6px;
+    padding: 5px;
     line-height: 1;
     flex-shrink: 0;
     cursor: pointer;
   }
   .rename-leader-btn:hover { color: var(--accent); }
-  .color-row-chips { display: flex; gap: 5px; flex-shrink: 0; }
+  .delete-leader-btn:hover { color: var(--danger); }
+  .color-row-chips { display: flex; gap: 5px; flex-shrink: 0; justify-content: center; }
   .color-chip {
     width: 26px;
     height: 26px;
@@ -1063,7 +1079,7 @@
   <div class="modal-card">
     <p class="modal-title">Colores de lideres</p>
     <p style="font-size:11.5px; color:var(--text-muted); margin:-6px 0 10px;">
-      Se detectan solo por las ultimas letras del nombre. Toca un color para asignarlo o quitarlo (maximo 2). B=Negro U=Azul Y=Amarillo R=Rojo G=Verde P=Purpura. Toca el icono de lapiz junto al nombre para renombrar un lider (sin perder partidas, mazos ni fotos).
+      Toca la foto (o el hueco vacio) para subir una. Los colores se detectan solo por las ultimas letras del nombre; toca un color para asignarlo o quitarlo (maximo 2). B=Negro U=Azul Y=Amarillo R=Rojo G=Verde P=Purpura. El lapiz renombra el lider (sin perder partidas, mazos ni fotos) y la papelera lo borra de la lista.
     </p>
     <div class="colors-list" id="colors-list"></div>
     <button class="modal-btn primary" id="colors-close" type="button">Cerrar</button>
@@ -2313,18 +2329,61 @@ rivalSelect.addEventListener('change', (e) => {
   renderLeaderPreview();
 });
 
-// --- Menu aparte: gestion de colores por lider ---
+// --- Menu aparte: grid de lideres (foto, colores, renombrar, borrar) ---
+function buildLeaderGridPhotoBox(name) {
+  const box = document.createElement('div');
+  box.className = 'leader-grid-photo';
+  const triggerUpload = () => { photoUploadTarget = name; leaderPhotoInput.click(); };
+  const photo = leaderPhotos[name];
+  const autoCode = leaderCardCodes[name];
+
+  if (photo) {
+    const img = document.createElement('img');
+    img.src = photo;
+    img.alt = escapeHtml(name);
+    img.title = 'Toca para cambiar la foto';
+    img.addEventListener('click', triggerUpload);
+    box.appendChild(img);
+  } else if (autoCode) {
+    const img = document.createElement('img');
+    img.alt = escapeHtml(autoCode);
+    img.title = 'Toca para subir tu propia foto';
+    img.onload = () => saveAutoLeaderPhoto(name, img.src);
+    img.addEventListener('click', triggerUpload);
+    trySetCardImage(img, autoCode, () => { box.innerHTML = ''; box.appendChild(leaderGridPhotoPlaceholder(triggerUpload)); });
+    box.appendChild(img);
+  } else {
+    box.appendChild(leaderGridPhotoPlaceholder(triggerUpload));
+  }
+  return box;
+}
+
+function leaderGridPhotoPlaceholder(onClick) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'leader-grid-photo-empty';
+  btn.title = 'Toca para subir una foto';
+  btn.innerHTML = placeholderImageSvg();
+  btn.addEventListener('click', onClick);
+  return btn;
+}
+
 function renderColorsList() {
   colorsList.innerHTML = '';
   sortedLeaders().forEach(name => {
     const current = leaderColors[name] || [];
-    const row = document.createElement('div');
-    row.className = 'color-row';
+    const card = document.createElement('div');
+    card.className = 'leader-grid-card';
+    card.appendChild(buildLeaderGridPhotoBox(name));
+
+    const nameRow = document.createElement('div');
+    nameRow.className = 'leader-grid-name-row';
 
     const label = document.createElement('span');
     label.className = 'color-row-name';
     label.textContent = name;
-    row.appendChild(label);
+    label.title = name;
+    nameRow.appendChild(label);
 
     const renameBtn = document.createElement('button');
     renameBtn.type = 'button';
@@ -2339,7 +2398,18 @@ function renderColorsList() {
       if (input === null) return;
       renameLeader(name, input.trim());
     });
-    row.appendChild(renameBtn);
+    nameRow.appendChild(renameBtn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'delete-leader-btn';
+    deleteBtn.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+    deleteBtn.title = 'Borrar lider';
+    deleteBtn.setAttribute('aria-label', 'Borrar ' + name);
+    deleteBtn.addEventListener('click', () => deleteLeaderFromList(name));
+    nameRow.appendChild(deleteBtn);
+
+    card.appendChild(nameRow);
 
     const chips = document.createElement('div');
     chips.className = 'color-row-chips';
@@ -2353,9 +2423,45 @@ function renderColorsList() {
       chip.addEventListener('click', () => toggleLeaderColor(name, letter));
       chips.appendChild(chip);
     });
-    row.appendChild(chips);
-    colorsList.appendChild(row);
+    card.appendChild(chips);
+    colorsList.appendChild(card);
   });
+}
+
+// Borra un lider de la lista. Tambien borra sus mazos guardados (sin el
+// lider en la lista no habria forma de volver a llegar a ellos); las
+// partidas y torneos ya registrados con el se quedan tal cual en el
+// historial, igual que al borrar un mazo no se tocan sus partidas.
+function deleteLeaderFromList(name) {
+  const deckCount = decks.filter(d => d.leader === name).length;
+  let msg = 'Borrar el lider "' + name + '"? Esta accion no se puede deshacer.';
+  if (deckCount) msg += ' Tambien se ' + (deckCount === 1 ? 'borrara su mazo guardado' : 'borraran sus ' + deckCount + ' mazos guardados') + '. Las partidas ya registradas no se tocan.';
+  if (!confirm(msg)) return;
+
+  leaders = leaders.filter(l => l !== name);
+  saveLeaders();
+
+  decks = decks.filter(d => d.leader !== name);
+  saveDecks();
+
+  [leaderColors, leaderPhotos, leaderStats, leaderCardCodes].forEach(store => { delete store[name]; });
+  saveLeaderColors();
+  saveLeaderPhotos();
+  saveLeaderStats();
+  saveLeaderCardCodes();
+
+  if (selectedLeader === name) selectedLeader = sortedLeaders()[0] || '';
+  if (selectedRival === name) selectedRival = '';
+  if (torneoDraft && torneoDraft.leader === name) torneoDraft.leader = '';
+
+  renderColorsList();
+  renderMiLiderSelect();
+  renderRivalSelect();
+  renderLeaderPreview();
+  updateStats(selectedLeader);
+  if (currentDeck && currentDeck.leader === name) startNewDeck();
+  if (torneoDraft) renderTorneoLeaderSelect();
+  showToast('Lider borrado');
 }
 
 // Renombra un lider en todos los sitios donde su nombre vive como clave
@@ -2967,6 +3073,7 @@ async function saveAutoLeaderPhoto(leaderName, url) {
     saveLeaderPhotos();
     if (currentDeck.leader === leaderName) renderLeaderPhoto();
     renderLeaderPreview();
+    if (colorsOverlay.classList.contains('show')) renderColorsList();
   } catch (e) {
     // CORS, red caida, etc. - se deja como estaba (viva desde el CDN)
   }
@@ -3059,8 +3166,9 @@ leaderPhotoInput.addEventListener('change', async (e) => {
   try {
     leaderPhotos[photoUploadTarget] = await readAndResizeImage(file, 520, 0.82);
     saveLeaderPhotos();
-    renderLeaderPhoto();
+    if (currentDeck && currentDeck.leader === photoUploadTarget) renderLeaderPhoto();
     renderLeaderPreview();
+    if (colorsOverlay.classList.contains('show')) renderColorsList();
     showToast('Foto cargada');
   } catch (err) {
     showToast('No se pudo cargar la imagen');
