@@ -1020,6 +1020,11 @@
     <p class="label" style="margin-bottom:10px;">Mejor y peor rival</p>
     <div id="rival-stats-list"><p class="empty">Cargando...</p></div>
   </div>
+
+  <div class="card tab-registro">
+    <p class="label" style="margin-bottom:10px;">Todos los rivales a los que te has enfrentado</p>
+    <div id="all-rivals-stats-list"><p class="empty">Cargando...</p></div>
+  </div>
   </div>
 
   <div class="col col-4">
@@ -1444,6 +1449,7 @@ const rivalDropdown = document.getElementById('rival-dropdown');
 const historyList = document.getElementById('history-list');
 const colorStatsList = document.getElementById('color-stats-list');
 const rivalStatsList = document.getElementById('rival-stats-list');
+const allRivalsStatsList = document.getElementById('all-rivals-stats-list');
 const historyFilterInput = document.getElementById('history-filter-input');
 const historyColorFilterEl = document.getElementById('history-color-filter');
 let historyColorFilter = [];
@@ -1964,6 +1970,7 @@ function updateStats(leaderName) {
 
   renderColorBreakdown(own);
   renderLeaderBestWorst(own);
+  renderAllRivalsStats();
   renderHistoryExactMatch(own);
   renderHistory(filterHistoryEntries(own));
 }
@@ -2076,6 +2083,21 @@ function renderLeaderBestWorst(own) {
   if (!best && !worst) {
     rivalStatsList.innerHTML = '<p class="empty">Todavia no hay partidas registradas con este lider.</p>';
   }
+}
+
+// A diferencia del resto de paneles de "Registro", este no se filtra por
+// el lider propio seleccionado arriba: junta TODAS las partidas (con
+// cualquiera de tus lideres) agrupadas por rival, para ver contra que
+// mazos juegas mas y como te va contra cada uno en general.
+function renderAllRivalsStats() {
+  const buckets = {};
+  matches.forEach(m => {
+    if (!buckets[m.liderRival]) {
+      buckets[m.liderRival] = { wins: 0, losses: 0, label: m.liderRival, badges: colorBadgesHtml(leaderColors[m.liderRival] || []) };
+    }
+    if (m.resultado === 'Victoria') buckets[m.liderRival].wins++; else buckets[m.liderRival].losses++;
+  });
+  renderPerfRows(allRivalsStatsList, buckets, 'Todavia no hay partidas registradas.');
 }
 
 // Builds the text a leader is searchable by: its name plus its color
