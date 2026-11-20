@@ -1157,9 +1157,9 @@
 
 <div class="modal-overlay colors-overlay" id="rivals-overlay">
   <div class="modal-card">
-    <p class="modal-title">Rivales enfrentados</p>
+    <p class="modal-title" id="rivals-title">Rivales enfrentados</p>
     <p style="font-size:11.5px; color:var(--text-muted); margin:-6px 0 10px;">
-      Ordenados de mas a menos partidas. El porcentaje es tu winrate contra ese lider, con cualquiera de los tuyos. Toca hasta 2 colores para filtrar.
+      Ordenados de mas a menos partidas. El porcentaje es tu winrate contra ese lider jugando con el lider que tienes seleccionado arriba. Toca hasta 2 colores para filtrar.
     </p>
     <div class="color-row-chips" id="rivals-color-filter" style="justify-content:center; margin-bottom:10px;"></div>
     <div class="colors-list" id="rivals-ranking-list"></div>
@@ -2098,12 +2098,6 @@ function renderLeaderBestWorst(own) {
   }
 }
 
-// A diferencia del resto de paneles de "Registro", este no se filtra por
-// el lider propio seleccionado arriba: junta TODAS las partidas (con
-// cualquiera de tus lideres) agrupadas por rival, para ver contra que
-// mazos juegas mas y como te va contra cada uno en general. Reutiliza la
-// foto/subida del grid de lideres (buildLeaderGridPhotoBox) aunque estos
-// nombres sean rivales, no "tus" lideres - viven en el mismo leaders[].
 // Chips de color de arriba del modal de rivales: no asignan color a nadie,
 // solo filtran que tarjetas se ven (maximo 2 a la vez, igual que al asignar
 // colores a un lider).
@@ -2134,9 +2128,16 @@ function renderRivalsColorFilterChips() {
   });
 }
 
+// Como el resto de paneles de "Registro", esto se filtra por el lider
+// propio seleccionado arriba (selectedLeader): se vuelve a llamar desde
+// updateStats() cada vez que ese lider cambia, asi que si el modal esta
+// abierto se refresca solo. Reutiliza la foto/subida del grid de lideres
+// (buildLeaderGridPhotoBox) aunque estos nombres sean rivales, no "tus"
+// lideres - viven en el mismo leaders[].
 function renderAllRivalsStats() {
+  document.getElementById('rivals-title').textContent = 'Rivales de ' + selectedLeader;
   const buckets = {};
-  matches.forEach(m => {
+  matches.filter(m => m.miLider === selectedLeader).forEach(m => {
     if (!buckets[m.liderRival]) buckets[m.liderRival] = { wins: 0, losses: 0 };
     if (m.resultado === 'Victoria') buckets[m.liderRival].wins++; else buckets[m.liderRival].losses++;
   });
@@ -2150,7 +2151,7 @@ function renderAllRivalsStats() {
 
   rivalsRankingList.innerHTML = '';
   if (!names.length) {
-    rivalsRankingList.innerHTML = '<p class="empty">' + (rivalsColorFilter.length ? 'Ningun rival enfrentado tiene ese color.' : 'Todavia no hay partidas registradas.') + '</p>';
+    rivalsRankingList.innerHTML = '<p class="empty">' + (rivalsColorFilter.length ? 'Ningun rival enfrentado tiene ese color.' : 'Todavia no hay partidas registradas con este lider.') + '</p>';
     return;
   }
   names.forEach(name => {
