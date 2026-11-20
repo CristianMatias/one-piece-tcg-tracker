@@ -830,6 +830,7 @@
     </div>
     <div style="display:flex; gap:8px; flex-shrink:0;">
       <button class="modal-btn" id="open-bulk-matches-btn" type="button">Varias partidas</button>
+      <button class="modal-btn" id="rivals-ranking-btn" type="button">Rivales</button>
       <button class="modal-btn" id="open-torneos-btn" type="button">Torneos</button>
     </div>
   </div>
@@ -1020,11 +1021,6 @@
     <p class="label" style="margin-bottom:10px;">Mejor y peor rival</p>
     <div id="rival-stats-list"><p class="empty">Cargando...</p></div>
   </div>
-
-  <div class="card tab-registro">
-    <p class="label" style="margin-bottom:10px;">Todos los rivales a los que te has enfrentado</p>
-    <button class="link-btn" id="rivals-ranking-btn" type="button">Ver ranking de rivales</button>
-  </div>
   </div>
 
   <div class="col col-4">
@@ -1163,8 +1159,9 @@
   <div class="modal-card">
     <p class="modal-title">Rivales enfrentados</p>
     <p style="font-size:11.5px; color:var(--text-muted); margin:-6px 0 10px;">
-      Ordenados de mas a menos partidas. El porcentaje es tu winrate contra ese lider, con cualquiera de los tuyos.
+      Ordenados de mas a menos partidas. El porcentaje es tu winrate contra ese lider, con cualquiera de los tuyos. Toca hasta 2 colores para filtrar.
     </p>
+    <div class="color-row-chips" id="rivals-color-filter" style="justify-content:center; margin-bottom:10px;"></div>
     <div class="colors-list" id="rivals-ranking-list"></div>
     <button class="modal-btn primary" id="rivals-close" type="button">Cerrar</button>
   </div>
@@ -1463,7 +1460,9 @@ const rivalStatsList = document.getElementById('rival-stats-list');
 const rivalsRankingBtn = document.getElementById('rivals-ranking-btn');
 const rivalsOverlay = document.getElementById('rivals-overlay');
 const rivalsRankingList = document.getElementById('rivals-ranking-list');
+const rivalsColorFilterEl = document.getElementById('rivals-color-filter');
 const rivalsClose = document.getElementById('rivals-close');
+let rivalsColorFilter = [];
 const historyFilterInput = document.getElementById('history-filter-input');
 const historyColorFilterEl = document.getElementById('history-color-filter');
 let historyColorFilter = [];
@@ -2105,17 +2104,50 @@ function renderLeaderBestWorst(own) {
 // mazos juegas mas y como te va contra cada uno en general. Reutiliza la
 // foto/subida del grid de lideres (buildLeaderGridPhotoBox) aunque estos
 // nombres sean rivales, no "tus" lideres - viven en el mismo leaders[].
+// Chips de color de arriba del modal de rivales: no asignan color a nadie,
+// solo filtran que tarjetas se ven (maximo 2 a la vez, igual que al asignar
+// colores a un lider).
+function renderRivalsColorFilterChips() {
+  rivalsColorFilterEl.innerHTML = '';
+  COLOR_LETTERS.forEach(letter => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'color-chip' + (rivalsColorFilter.includes(letter) ? ' active' : '');
+    chip.dataset.color = letter;
+    chip.textContent = letter;
+    chip.setAttribute('aria-label', COLOR_NAMES[letter]);
+    chip.addEventListener('click', () => {
+      const idx = rivalsColorFilter.indexOf(letter);
+      if (idx >= 0) {
+        rivalsColorFilter.splice(idx, 1);
+      } else {
+        if (rivalsColorFilter.length >= 2) {
+          showToast('Maximo 2 colores de filtro');
+          return;
+        }
+        rivalsColorFilter.push(letter);
+      }
+      renderRivalsColorFilterChips();
+      renderAllRivalsStats();
+    });
+    rivalsColorFilterEl.appendChild(chip);
+  });
+}
+
 function renderAllRivalsStats() {
   const buckets = {};
   matches.forEach(m => {
     if (!buckets[m.liderRival]) buckets[m.liderRival] = { wins: 0, losses: 0 };
     if (m.resultado === 'Victoria') buckets[m.liderRival].wins++; else buckets[m.liderRival].losses++;
   });
-  const names = Object.keys(buckets).sort((a, b) => (buckets[b].wins + buckets[b].losses) - (buckets[a].wins + buckets[a].losses));
+  let names = Object.keys(buckets).sort((a, b) => (buckets[b].wins + buckets[b].losses) - (buckets[a].wins + buckets[a].losses));
+  if (rivalsColorFilter.length) {
+    names = names.filter(name => (leaderColors[name] || []).some(c => rivalsColorFilter.includes(c)));
+  }
 
   rivalsRankingList.innerHTML = '';
   if (!names.length) {
-    rivalsRankingList.innerHTML = '<p class="empty">Todavia no hay partidas registradas.</p>';
+    rivalsRankingList.innerHTML = '<p class="empty">' + (rivalsColorFilter.length ? 'Ningun rival enfrentado tiene ese color.' : 'Todavia no hay partidas registradas.') + '</p>';
     return;
   }
   names.forEach(name => {
@@ -2695,6 +2727,8 @@ colorsOverlay.addEventListener('click', (e) => {
 });
 
 rivalsRankingBtn.addEventListener('click', () => {
+  rivalsColorFilter = [];
+  renderRivalsColorFilterChips();
   renderAllRivalsStats();
   rivalsOverlay.classList.add('show');
 });
