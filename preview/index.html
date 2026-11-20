@@ -1023,7 +1023,7 @@
 
   <div class="card tab-registro">
     <p class="label" style="margin-bottom:10px;">Todos los rivales a los que te has enfrentado</p>
-    <div id="all-rivals-stats-list"><p class="empty">Cargando...</p></div>
+    <button class="link-btn" id="rivals-ranking-btn" type="button">Ver ranking de rivales</button>
   </div>
   </div>
 
@@ -1156,6 +1156,17 @@
     </p>
     <div class="colors-list" id="colors-list"></div>
     <button class="modal-btn primary" id="colors-close" type="button">Cerrar</button>
+  </div>
+</div>
+
+<div class="modal-overlay colors-overlay" id="rivals-overlay">
+  <div class="modal-card">
+    <p class="modal-title">Rivales enfrentados</p>
+    <p style="font-size:11.5px; color:var(--text-muted); margin:-6px 0 10px;">
+      Ordenados de mas a menos partidas. El porcentaje es tu winrate contra ese lider, con cualquiera de los tuyos.
+    </p>
+    <div class="colors-list" id="rivals-ranking-list"></div>
+    <button class="modal-btn primary" id="rivals-close" type="button">Cerrar</button>
   </div>
 </div>
 
@@ -1449,7 +1460,10 @@ const rivalDropdown = document.getElementById('rival-dropdown');
 const historyList = document.getElementById('history-list');
 const colorStatsList = document.getElementById('color-stats-list');
 const rivalStatsList = document.getElementById('rival-stats-list');
-const allRivalsStatsList = document.getElementById('all-rivals-stats-list');
+const rivalsRankingBtn = document.getElementById('rivals-ranking-btn');
+const rivalsOverlay = document.getElementById('rivals-overlay');
+const rivalsRankingList = document.getElementById('rivals-ranking-list');
+const rivalsClose = document.getElementById('rivals-close');
 const historyFilterInput = document.getElementById('history-filter-input');
 const historyColorFilterEl = document.getElementById('history-color-filter');
 let historyColorFilter = [];
@@ -1970,7 +1984,7 @@ function updateStats(leaderName) {
 
   renderColorBreakdown(own);
   renderLeaderBestWorst(own);
-  renderAllRivalsStats();
+  if (rivalsOverlay.classList.contains('show')) renderAllRivalsStats();
   renderHistoryExactMatch(own);
   renderHistory(filterHistoryEntries(own));
 }
@@ -2088,16 +2102,45 @@ function renderLeaderBestWorst(own) {
 // A diferencia del resto de paneles de "Registro", este no se filtra por
 // el lider propio seleccionado arriba: junta TODAS las partidas (con
 // cualquiera de tus lideres) agrupadas por rival, para ver contra que
-// mazos juegas mas y como te va contra cada uno en general.
+// mazos juegas mas y como te va contra cada uno en general. Reutiliza la
+// foto/subida del grid de lideres (buildLeaderGridPhotoBox) aunque estos
+// nombres sean rivales, no "tus" lideres - viven en el mismo leaders[].
 function renderAllRivalsStats() {
   const buckets = {};
   matches.forEach(m => {
-    if (!buckets[m.liderRival]) {
-      buckets[m.liderRival] = { wins: 0, losses: 0, label: m.liderRival, badges: colorBadgesHtml(leaderColors[m.liderRival] || []) };
-    }
+    if (!buckets[m.liderRival]) buckets[m.liderRival] = { wins: 0, losses: 0 };
     if (m.resultado === 'Victoria') buckets[m.liderRival].wins++; else buckets[m.liderRival].losses++;
   });
-  renderPerfRows(allRivalsStatsList, buckets, 'Todavia no hay partidas registradas.');
+  const names = Object.keys(buckets).sort((a, b) => (buckets[b].wins + buckets[b].losses) - (buckets[a].wins + buckets[a].losses));
+
+  rivalsRankingList.innerHTML = '';
+  if (!names.length) {
+    rivalsRankingList.innerHTML = '<p class="empty">Todavia no hay partidas registradas.</p>';
+    return;
+  }
+  names.forEach(name => {
+    const b = buckets[name];
+    const total = b.wins + b.losses;
+    const pct = Math.round((b.wins / total) * 100);
+
+    const card = document.createElement('div');
+    card.className = 'leader-grid-card';
+    card.appendChild(buildLeaderGridPhotoBox(name));
+
+    const label = document.createElement('p');
+    label.className = 'color-row-name';
+    label.style.textAlign = 'center';
+    label.textContent = name;
+    label.title = name;
+    card.appendChild(label);
+
+    const stat = document.createElement('p');
+    stat.style.textAlign = 'center';
+    stat.innerHTML = '<span class="perf-pct ' + (pct >= 50 ? 'good' : 'bad') + '">' + pct + '%</span> <span class="perf-sub">(' + b.wins + 'V-' + b.losses + 'D)</span>';
+    card.appendChild(stat);
+
+    rivalsRankingList.appendChild(card);
+  });
 }
 
 // Builds the text a leader is searchable by: its name plus its color
@@ -2651,6 +2694,19 @@ colorsOverlay.addEventListener('click', (e) => {
   if (e.target === colorsOverlay) colorsOverlay.classList.remove('show');
 });
 
+rivalsRankingBtn.addEventListener('click', () => {
+  renderAllRivalsStats();
+  rivalsOverlay.classList.add('show');
+});
+
+rivalsClose.addEventListener('click', () => {
+  rivalsOverlay.classList.remove('show');
+});
+
+rivalsOverlay.addEventListener('click', (e) => {
+  if (e.target === rivalsOverlay) rivalsOverlay.classList.remove('show');
+});
+
 document.querySelectorAll('.btn[data-group], .btn-win[data-group], .btn-lose[data-group]').forEach(btn => {
   btn.addEventListener('click', () => {
     const group = btn.dataset.group;
@@ -3164,6 +3220,7 @@ async function saveAutoLeaderPhoto(leaderName, url) {
     if (currentDeck.leader === leaderName) renderLeaderPhoto();
     renderLeaderPreview();
     if (colorsOverlay.classList.contains('show')) renderColorsList();
+    if (rivalsOverlay.classList.contains('show')) renderAllRivalsStats();
   } catch (e) {
     // CORS, red caida, etc. - se deja como estaba (viva desde el CDN)
   }
@@ -3259,6 +3316,7 @@ leaderPhotoInput.addEventListener('change', async (e) => {
     if (currentDeck && currentDeck.leader === photoUploadTarget) renderLeaderPhoto();
     renderLeaderPreview();
     if (colorsOverlay.classList.contains('show')) renderColorsList();
+    if (rivalsOverlay.classList.contains('show')) renderAllRivalsStats();
     showToast('Foto cargada');
   } catch (err) {
     showToast('No se pudo cargar la imagen');
