@@ -2142,7 +2142,10 @@ function renderAllRivalsStats() {
   });
   let names = Object.keys(buckets).sort((a, b) => (buckets[b].wins + buckets[b].losses) - (buckets[a].wins + buckets[a].losses));
   if (rivalsColorFilter.length) {
-    names = names.filter(name => (leaderColors[name] || []).some(c => rivalsColorFilter.includes(c)));
+    // Con 2 colores seleccionados, exige que el lider tenga los dos (no
+    // basta con uno de los dos) - si solo hay 1 seleccionado, basta con
+    // que lo tenga entre sus colores.
+    names = names.filter(name => rivalsColorFilter.every(c => (leaderColors[name] || []).includes(c)));
   }
 
   rivalsRankingList.innerHTML = '';
