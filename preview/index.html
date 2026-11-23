@@ -1159,8 +1159,13 @@
   <div class="modal-card">
     <p class="modal-title" id="rivals-title">Rivales enfrentados</p>
     <p style="font-size:11.5px; color:var(--text-muted); margin:-6px 0 10px;">
-      Ordenados de mas a menos partidas. El porcentaje es tu winrate contra ese lider jugando con el lider que tienes seleccionado arriba. Toca hasta 2 colores para filtrar.
+      El porcentaje es tu winrate contra ese lider jugando con el lider que tienes seleccionado arriba. Toca hasta 2 colores para filtrar.
     </p>
+    <div class="row3" style="margin-bottom:8px;">
+      <button class="btn selected" id="rivals-sort-matches" type="button">Mas partidas</button>
+      <button class="btn" id="rivals-sort-best" type="button">Mejor winrate</button>
+      <button class="btn" id="rivals-sort-worst" type="button">Peor winrate</button>
+    </div>
     <div class="color-row-chips" id="rivals-color-filter" style="justify-content:center; margin-bottom:10px;"></div>
     <div class="colors-list" id="rivals-ranking-list"></div>
     <button class="modal-btn primary" id="rivals-close" type="button">Cerrar</button>
@@ -1462,7 +1467,13 @@ const rivalsOverlay = document.getElementById('rivals-overlay');
 const rivalsRankingList = document.getElementById('rivals-ranking-list');
 const rivalsColorFilterEl = document.getElementById('rivals-color-filter');
 const rivalsClose = document.getElementById('rivals-close');
+const rivalsSortBtns = {
+  matches: document.getElementById('rivals-sort-matches'),
+  best: document.getElementById('rivals-sort-best'),
+  worst: document.getElementById('rivals-sort-worst'),
+};
 let rivalsColorFilter = [];
+let rivalsSortMode = 'matches';
 const historyFilterInput = document.getElementById('history-filter-input');
 const historyColorFilterEl = document.getElementById('history-color-filter');
 let historyColorFilter = [];
@@ -2141,7 +2152,12 @@ function renderAllRivalsStats() {
     if (!buckets[m.liderRival]) buckets[m.liderRival] = { wins: 0, losses: 0 };
     if (m.resultado === 'Victoria') buckets[m.liderRival].wins++; else buckets[m.liderRival].losses++;
   });
-  let names = Object.keys(buckets).sort((a, b) => (buckets[b].wins + buckets[b].losses) - (buckets[a].wins + buckets[a].losses));
+  const winrate = (b) => b.wins / (b.wins + b.losses);
+  let names = Object.keys(buckets).sort((a, b) => {
+    if (rivalsSortMode === 'best') return winrate(buckets[b]) - winrate(buckets[a]);
+    if (rivalsSortMode === 'worst') return winrate(buckets[a]) - winrate(buckets[b]);
+    return (buckets[b].wins + buckets[b].losses) - (buckets[a].wins + buckets[a].losses);
+  });
   if (rivalsColorFilter.length) {
     // Con 2 colores seleccionados, exige que el lider tenga los dos (no
     // basta con uno de los dos) - si solo hay 1 seleccionado, basta con
@@ -2732,9 +2748,20 @@ colorsOverlay.addEventListener('click', (e) => {
 
 rivalsRankingBtn.addEventListener('click', () => {
   rivalsColorFilter = [];
+  rivalsSortMode = 'matches';
+  Object.entries(rivalsSortBtns).forEach(([mode, btn]) => btn.classList.toggle('selected', mode === 'matches'));
   renderRivalsColorFilterChips();
   renderAllRivalsStats();
   rivalsOverlay.classList.add('show');
+});
+
+Object.entries(rivalsSortBtns).forEach(([mode, btn]) => {
+  btn.addEventListener('click', () => {
+    rivalsSortMode = mode;
+    Object.values(rivalsSortBtns).forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    renderAllRivalsStats();
+  });
 });
 
 rivalsClose.addEventListener('click', () => {
