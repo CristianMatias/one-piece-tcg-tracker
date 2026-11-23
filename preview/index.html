@@ -686,6 +686,25 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
+  .rivals-filters {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px 12px;
+    margin: 0 0 12px;
+  }
+  .rivals-filters-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: var(--text-muted);
+    margin: 0 0 6px;
+    text-align: center;
+  }
+  .rivals-filters .btn {
+    padding: 8px 4px;
+    font-size: 12px;
+  }
   .leader-grid-card {
     background: var(--bg);
     border-radius: var(--radius);
@@ -1159,14 +1178,18 @@
   <div class="modal-card">
     <p class="modal-title" id="rivals-title">Rivales enfrentados</p>
     <p style="font-size:11.5px; color:var(--text-muted); margin:-6px 0 10px;">
-      El porcentaje es tu winrate contra ese lider jugando con el lider que tienes seleccionado arriba. Toca hasta 2 colores para filtrar.
+      El porcentaje es tu winrate contra ese lider jugando con el lider que tienes seleccionado arriba.
     </p>
-    <div class="row3" style="margin-bottom:8px;">
-      <button class="btn selected" id="rivals-sort-matches" type="button">Mas partidas</button>
-      <button class="btn" id="rivals-sort-best" type="button">Mejor winrate</button>
-      <button class="btn" id="rivals-sort-worst" type="button">Peor winrate</button>
+    <div class="rivals-filters">
+      <p class="rivals-filters-label">Ordenar por</p>
+      <div class="row3">
+        <button class="btn selected" id="rivals-sort-matches" type="button">Mas partidas</button>
+        <button class="btn" id="rivals-sort-best" type="button">Mejor winrate</button>
+        <button class="btn" id="rivals-sort-worst" type="button">Peor winrate</button>
+      </div>
+      <p class="rivals-filters-label" style="margin-top:12px;">Filtrar por color (max. 2)</p>
+      <div class="color-row-chips" id="rivals-color-filter" style="justify-content:center;"></div>
     </div>
-    <div class="color-row-chips" id="rivals-color-filter" style="justify-content:center; margin-bottom:10px;"></div>
     <div class="colors-list" id="rivals-ranking-list"></div>
     <button class="modal-btn primary" id="rivals-close" type="button">Cerrar</button>
   </div>
