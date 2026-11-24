@@ -293,6 +293,23 @@
     line-height: 1;
     padding: 2px;
   }
+  .card-cell .cell-drag-handle {
+    position: absolute;
+    top: 1px;
+    left: 3px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px;
+    cursor: grab;
+    touch-action: none;
+  }
+  .card-cell.dragging {
+    opacity: .55;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, .3);
+  }
   .card-cell-add {
     display: flex;
     align-items: center;
@@ -4170,6 +4187,15 @@ function renderDeckCardsList() {
   nonLeaderCards.forEach(c => {
     const cell = document.createElement('div');
     cell.className = 'card-cell';
+    cell.dataset.code = c.code;
+
+    const dragHandle = document.createElement('button');
+    dragHandle.type = 'button';
+    dragHandle.className = 'cell-drag-handle';
+    dragHandle.innerHTML = '☰';
+    dragHandle.setAttribute('aria-label', 'Arrastrar para reordenar');
+    attachCardDrag(dragHandle, cell);
+    cell.appendChild(dragHandle);
 
     cell.appendChild(cardPhotoBox(c.code));
 
@@ -4239,6 +4265,79 @@ function addCardCell() {
   cell.addEventListener('click', promptAddSingleCard);
   return cell;
 }
+
+// Reordenar cartas del mazo arrastrando. Un solo arrastre activo a la
+// vez (dragCard), identificado por pointerId para soportar raton y
+// tactil con el mismo codigo. Mientras se arrastra, la celda se saca
+// del grid (position:fixed) y sigue al puntero; al pasar por encima de
+// otra celda se intercambian de sitio en el DOM (reorden en vivo). Al
+// soltar, el orden final del DOM se vuelca a currentDeck.cards.
+let dragCard = null;
+
+function attachCardDrag(handle, cell) {
+  handle.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    const rect = cell.getBoundingClientRect();
+    dragCard = {
+      cell,
+      pointerId: e.pointerId,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+    };
+    cell.classList.add('dragging');
+    cell.style.position = 'fixed';
+    cell.style.width = rect.width + 'px';
+    cell.style.left = rect.left + 'px';
+    cell.style.top = rect.top + 'px';
+    cell.style.zIndex = '9999';
+    handle.setPointerCapture(e.pointerId);
+  });
+}
+
+function onCardDragMove(e) {
+  if (!dragCard || e.pointerId !== dragCard.pointerId) return;
+  const { cell, offsetX, offsetY } = dragCard;
+  cell.style.left = (e.clientX - offsetX) + 'px';
+  cell.style.top = (e.clientY - offsetY) + 'px';
+
+  cell.style.pointerEvents = 'none';
+  const target = document.elementFromPoint(e.clientX, e.clientY);
+  cell.style.pointerEvents = '';
+  const targetCell = target && target.closest('.card-cell:not(.card-cell-add)');
+  if (!targetCell || targetCell === cell) return;
+  const grid = targetCell.parentElement;
+  const cells = Array.from(grid.children);
+  if (cells.indexOf(cell) < cells.indexOf(targetCell)) {
+    grid.insertBefore(cell, targetCell.nextSibling);
+  } else {
+    grid.insertBefore(cell, targetCell);
+  }
+}
+
+function onCardDragEnd(e) {
+  if (!dragCard || e.pointerId !== dragCard.pointerId) return;
+  const cell = dragCard.cell;
+  cell.classList.remove('dragging');
+  cell.style.position = '';
+  cell.style.left = '';
+  cell.style.top = '';
+  cell.style.width = '';
+  cell.style.zIndex = '';
+  dragCard = null;
+
+  const grid = cell.parentElement;
+  const newOrderCodes = Array.from(grid.children)
+    .filter(c => c.classList.contains('card-cell') && !c.classList.contains('card-cell-add'))
+    .map(c => c.dataset.code);
+  const byCode = {};
+  currentDeck.cards.slice(1).forEach(c => { byCode[c.code] = c; });
+  currentDeck.cards = [currentDeck.cards[0], ...newOrderCodes.map(code => byCode[code])];
+  renderDeckCardsList();
+}
+
+document.addEventListener('pointermove', onCardDragMove);
+document.addEventListener('pointerup', onCardDragEnd);
+document.addEventListener('pointercancel', onCardDragEnd);
 
 // Mismo formato "NxCODIGO" que "Pegar lista", pero siempre como carta
 // normal - nunca como slot del lider (ese ya esta fijo en cards[0]).
