@@ -282,30 +282,26 @@
   }
   .card-cell .cell-controls { display: flex; justify-content: center; gap: 4px; margin-top: 5px; }
   .card-cell .cell-controls .qty-btn { width: 18px; height: 18px; font-size: 11px; }
-  .card-cell .cell-del {
-    position: absolute;
-    top: 1px;
-    right: 3px;
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 12px;
-    line-height: 1;
-    padding: 2px;
-  }
+  .card-cell .cell-del,
   .card-cell .cell-drag-handle {
     position: absolute;
-    top: 1px;
-    left: 3px;
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 13px;
+    top: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 12px;
     line-height: 1;
-    padding: 2px;
-    cursor: grab;
-    touch-action: none;
+    padding: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
   }
+  .card-cell .cell-del { right: 2px; }
+  .card-cell .cell-drag-handle { left: 2px; cursor: grab; touch-action: none; }
   .card-cell.dragging {
     opacity: .55;
     box-shadow: 0 6px 16px rgba(0, 0, 0, .3);
@@ -4300,6 +4296,13 @@ function onCardDragMove(e) {
   cell.style.left = (e.clientX - offsetX) + 'px';
   cell.style.top = (e.clientY - offsetY) + 'px';
 
+  // Sin esta pausa, el intercambio reordenaba el grid y eso cambiaba que
+  // carta quedaba bajo el dedo en el pixel siguiente, volviendo a
+  // disparar otro intercambio al instante: la carta "rebotaba" entre dos
+  // sitios y habia que insistir para que se asentase.
+  const now = Date.now();
+  if (now - (dragCard.lastSwapAt || 0) < 180) return;
+
   cell.style.pointerEvents = 'none';
   const target = document.elementFromPoint(e.clientX, e.clientY);
   cell.style.pointerEvents = '';
@@ -4307,11 +4310,13 @@ function onCardDragMove(e) {
   if (!targetCell || targetCell === cell) return;
   const grid = targetCell.parentElement;
   const cells = Array.from(grid.children);
+  if (cells.indexOf(cell) === cells.indexOf(targetCell)) return;
   if (cells.indexOf(cell) < cells.indexOf(targetCell)) {
     grid.insertBefore(cell, targetCell.nextSibling);
   } else {
     grid.insertBefore(cell, targetCell);
   }
+  dragCard.lastSwapAt = now;
 }
 
 function onCardDragEnd(e) {
