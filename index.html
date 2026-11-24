@@ -1182,10 +1182,9 @@
     </p>
     <div class="rivals-filters">
       <p class="rivals-filters-label">Ordenar por</p>
-      <div class="row3">
-        <button class="btn selected" id="rivals-sort-matches" type="button">Mas partidas</button>
-        <button class="btn" id="rivals-sort-best" type="button">Mejor winrate</button>
-        <button class="btn" id="rivals-sort-worst" type="button">Peor winrate</button>
+      <div class="row2">
+        <button class="btn" id="rivals-sort-mu" type="button">Mas enfrentamientos</button>
+        <button class="btn" id="rivals-sort-pct" type="button">Mejor winrate</button>
       </div>
       <p class="rivals-filters-label" style="margin-top:12px;">Filtrar por color (max. 2)</p>
       <div class="color-row-chips" id="rivals-color-filter" style="justify-content:center;"></div>
@@ -1490,13 +1489,11 @@ const rivalsOverlay = document.getElementById('rivals-overlay');
 const rivalsRankingList = document.getElementById('rivals-ranking-list');
 const rivalsColorFilterEl = document.getElementById('rivals-color-filter');
 const rivalsClose = document.getElementById('rivals-close');
-const rivalsSortBtns = {
-  matches: document.getElementById('rivals-sort-matches'),
-  best: document.getElementById('rivals-sort-best'),
-  worst: document.getElementById('rivals-sort-worst'),
-};
+const rivalsSortMuBtn = document.getElementById('rivals-sort-mu');
+const rivalsSortPctBtn = document.getElementById('rivals-sort-pct');
 let rivalsColorFilter = [];
-let rivalsSortMode = 'matches';
+let rivalsSortMuDesc = true;  // true = mas enfrentamientos primero
+let rivalsSortPctDesc = true; // true = mejor winrate primero (desempate)
 const historyFilterInput = document.getElementById('history-filter-input');
 const historyColorFilterEl = document.getElementById('history-color-filter');
 let historyColorFilter = [];
@@ -2176,10 +2173,11 @@ function renderAllRivalsStats() {
     if (m.resultado === 'Victoria') buckets[m.liderRival].wins++; else buckets[m.liderRival].losses++;
   });
   const winrate = (b) => b.wins / (b.wins + b.losses);
+  const total = (b) => b.wins + b.losses;
   let names = Object.keys(buckets).sort((a, b) => {
-    if (rivalsSortMode === 'best') return winrate(buckets[b]) - winrate(buckets[a]);
-    if (rivalsSortMode === 'worst') return winrate(buckets[a]) - winrate(buckets[b]);
-    return (buckets[b].wins + buckets[b].losses) - (buckets[a].wins + buckets[a].losses);
+    const muDiff = rivalsSortMuDesc ? total(buckets[b]) - total(buckets[a]) : total(buckets[a]) - total(buckets[b]);
+    if (muDiff !== 0) return muDiff;
+    return rivalsSortPctDesc ? winrate(buckets[b]) - winrate(buckets[a]) : winrate(buckets[a]) - winrate(buckets[b]);
   });
   if (rivalsColorFilter.length) {
     // Con 2 colores seleccionados, exige que el lider tenga los dos (no
@@ -2769,22 +2767,31 @@ colorsOverlay.addEventListener('click', (e) => {
   if (e.target === colorsOverlay) colorsOverlay.classList.remove('show');
 });
 
+function renderRivalsSortBtns() {
+  rivalsSortMuBtn.textContent = rivalsSortMuDesc ? 'Mas enfrentamientos' : 'Menos enfrentamientos';
+  rivalsSortPctBtn.textContent = rivalsSortPctDesc ? 'Mejor winrate' : 'Peor winrate';
+}
+
 rivalsRankingBtn.addEventListener('click', () => {
   rivalsColorFilter = [];
-  rivalsSortMode = 'matches';
-  Object.entries(rivalsSortBtns).forEach(([mode, btn]) => btn.classList.toggle('selected', mode === 'matches'));
+  rivalsSortMuDesc = true;
+  rivalsSortPctDesc = true;
+  renderRivalsSortBtns();
   renderRivalsColorFilterChips();
   renderAllRivalsStats();
   rivalsOverlay.classList.add('show');
 });
 
-Object.entries(rivalsSortBtns).forEach(([mode, btn]) => {
-  btn.addEventListener('click', () => {
-    rivalsSortMode = mode;
-    Object.values(rivalsSortBtns).forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    renderAllRivalsStats();
-  });
+rivalsSortMuBtn.addEventListener('click', () => {
+  rivalsSortMuDesc = !rivalsSortMuDesc;
+  renderRivalsSortBtns();
+  renderAllRivalsStats();
+});
+
+rivalsSortPctBtn.addEventListener('click', () => {
+  rivalsSortPctDesc = !rivalsSortPctDesc;
+  renderRivalsSortBtns();
+  renderAllRivalsStats();
 });
 
 rivalsClose.addEventListener('click', () => {
