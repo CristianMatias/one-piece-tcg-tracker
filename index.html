@@ -701,10 +701,29 @@
     margin: 0 0 6px;
     text-align: center;
   }
-  .rivals-filters .btn {
-    padding: 8px 4px;
-    font-size: 12px;
+  .rivals-filter-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
   }
+  .rivals-filter-row .color-row-chips { flex: 1; justify-content: center; }
+  .rivals-sort-chip {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 6px 9px;
+    border-radius: 999px;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .rivals-sort-chip.positive { border-color: var(--success-border); background: var(--success-bg); color: var(--success); }
+  .rivals-sort-chip.negative { border-color: var(--danger-border); background: var(--danger-bg); color: var(--danger); }
   .leader-grid-card {
     background: var(--bg);
     border-radius: var(--radius);
@@ -1181,13 +1200,12 @@
       El porcentaje es tu winrate contra ese lider jugando con el lider que tienes seleccionado arriba.
     </p>
     <div class="rivals-filters">
-      <p class="rivals-filters-label">Ordenar por</p>
-      <div class="row2">
-        <button class="btn" id="rivals-sort-mu" type="button">Mas enfrentamientos</button>
-        <button class="btn" id="rivals-sort-pct" type="button">Mejor winrate</button>
+      <p class="rivals-filters-label">Ordenar y filtrar por color (max. 2)</p>
+      <div class="rivals-filter-row">
+        <button class="rivals-sort-chip" id="rivals-sort-mu" type="button"></button>
+        <div class="color-row-chips" id="rivals-color-filter"></div>
+        <button class="rivals-sort-chip" id="rivals-sort-pct" type="button"></button>
       </div>
-      <p class="rivals-filters-label" style="margin-top:12px;">Filtrar por color (max. 2)</p>
-      <div class="color-row-chips" id="rivals-color-filter" style="justify-content:center;"></div>
     </div>
     <div class="colors-list" id="rivals-ranking-list"></div>
     <button class="modal-btn primary" id="rivals-close" type="button">Cerrar</button>
@@ -2207,6 +2225,12 @@ function renderAllRivalsStats() {
     label.title = name;
     card.appendChild(label);
 
+    const totalLine = document.createElement('p');
+    totalLine.className = 'perf-sub';
+    totalLine.style.textAlign = 'center';
+    totalLine.textContent = total + (total === 1 ? ' partida' : ' partidas');
+    card.appendChild(totalLine);
+
     const stat = document.createElement('p');
     stat.style.textAlign = 'center';
     stat.innerHTML = '<span class="perf-pct ' + (pct >= 50 ? 'good' : 'bad') + '">' + pct + '%</span> <span class="perf-sub">(' + b.wins + 'V-' + b.losses + 'D)</span>';
@@ -2768,8 +2792,13 @@ colorsOverlay.addEventListener('click', (e) => {
 });
 
 function renderRivalsSortBtns() {
-  rivalsSortMuBtn.textContent = rivalsSortMuDesc ? 'Mas enfrentamientos' : 'Menos enfrentamientos';
-  rivalsSortPctBtn.textContent = rivalsSortPctDesc ? 'Mejor winrate' : 'Peor winrate';
+  rivalsSortMuBtn.textContent = 'Partidas ' + (rivalsSortMuDesc ? '▲' : '▼');
+  rivalsSortMuBtn.title = rivalsSortMuDesc ? 'Mas enfrentamientos primero' : 'Menos enfrentamientos primero';
+  rivalsSortMuBtn.className = 'rivals-sort-chip ' + (rivalsSortMuDesc ? 'positive' : 'negative');
+
+  rivalsSortPctBtn.textContent = 'Winrate ' + (rivalsSortPctDesc ? '▲' : '▼');
+  rivalsSortPctBtn.title = rivalsSortPctDesc ? 'Mejor winrate primero' : 'Peor winrate primero';
+  rivalsSortPctBtn.className = 'rivals-sort-chip ' + (rivalsSortPctDesc ? 'positive' : 'negative');
 }
 
 rivalsRankingBtn.addEventListener('click', () => {
