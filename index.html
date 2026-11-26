@@ -897,9 +897,10 @@
       <h1>One Piece TCG</h1>
       <p class="sub">Registro de partidas y mazos</p>
     </div>
-    <div style="display:flex; gap:8px; flex-shrink:0;">
+    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; flex-shrink:0;">
       <button class="modal-btn" id="open-bulk-matches-btn" type="button">Varias partidas</button>
       <button class="modal-btn" id="rivals-ranking-btn" type="button">Rivales</button>
+      <button class="modal-btn" id="leader-stats-btn" type="button">Estadisticas</button>
       <button class="modal-btn" id="open-torneos-btn" type="button">Torneos</button>
     </div>
   </div>
@@ -1261,6 +1262,14 @@
   </div>
 </div>
 
+<div class="modal-overlay colors-overlay" id="leader-stats-overlay">
+  <div class="modal-card">
+    <p class="modal-title">Estadisticas por lider</p>
+    <div class="colors-list" id="leader-stats-list"></div>
+    <button class="modal-btn primary" id="leader-stats-close" type="button">Cerrar</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="bulk-import-overlay">
   <div class="modal-card">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -1561,6 +1570,10 @@ const rivalsSortPctBtn = document.getElementById('rivals-sort-pct');
 let rivalsColorFilter = [];
 let rivalsSortMuDesc = true;  // true = mas enfrentamientos primero
 let rivalsSortPctDesc = true; // true = mejor winrate primero (desempate)
+const leaderStatsBtn = document.getElementById('leader-stats-btn');
+const leaderStatsOverlay = document.getElementById('leader-stats-overlay');
+const leaderStatsList = document.getElementById('leader-stats-list');
+const leaderStatsClose = document.getElementById('leader-stats-close');
 const historyFilterInput = document.getElementById('history-filter-input');
 const historyColorFilterEl = document.getElementById('history-color-filter');
 let historyColorFilter = [];
@@ -2091,6 +2104,7 @@ function updateStats(leaderName) {
   renderColorBreakdown(own);
   renderLeaderBestWorst(own);
   if (rivalsOverlay.classList.contains('show')) renderAllRivalsStats();
+  if (leaderStatsOverlay.classList.contains('show')) renderLeaderStatsGrid();
   renderHistoryExactMatch(own);
   renderHistory(filterHistoryEntries(own));
 }
@@ -2302,6 +2316,73 @@ function renderAllRivalsStats() {
     card.appendChild(stat);
 
     rivalsRankingList.appendChild(card);
+  });
+}
+
+// Per-leader overall stats for the "Estadisticas" grid: same training-
+// exclusion convention as updateStats() (ownForStats), same streak algo.
+function leaderOverallStats(name) {
+  const own = matches.filter(m => m.miLider === name);
+  const ownForStats = own.filter(m => m.tipo !== 'Entrenamiento');
+  const total = ownForStats.length;
+  const wins = ownForStats.filter(m => m.resultado === 'Victoria').length;
+  let streakCount = 0, streakType = null;
+  if (total) {
+    streakType = ownForStats[total - 1].resultado;
+    for (let i = total - 1; i >= 0 && ownForStats[i].resultado === streakType; i--) streakCount++;
+  }
+  const lastResults = ownForStats.slice(-5).map(m => m.resultado);
+  return { hasRecord: own.length > 0, total, wins, streakCount, streakType, lastResults };
+}
+
+function renderLeaderStatsGrid() {
+  let names = sortedLeaders().map(name => ({ name, s: leaderOverallStats(name) }))
+    .filter(x => x.s.hasRecord)
+    .sort((a, b) => b.s.total - a.s.total || a.name.localeCompare(b.name, 'es'));
+
+  leaderStatsList.innerHTML = '';
+  if (!names.length) {
+    leaderStatsList.innerHTML = '<p class="empty">Todavia no hay partidas registradas.</p>';
+    return;
+  }
+  names.forEach(({ name, s }) => {
+    const pct = s.total ? Math.round((s.wins / s.total) * 100) : 0;
+    const card = document.createElement('div');
+    card.className = 'leader-grid-card';
+    card.appendChild(buildLeaderGridPhotoBox(name));
+
+    const label = document.createElement('p');
+    label.className = 'color-row-name';
+    label.style.textAlign = 'center';
+    label.textContent = name;
+    label.title = name;
+    card.appendChild(label);
+
+    const stat = document.createElement('p');
+    stat.style.textAlign = 'center';
+    stat.innerHTML = '<span class="perf-pct ' + (pct >= 50 ? 'good' : 'bad') + '">' + pct + '%</span>';
+    card.appendChild(stat);
+
+    const totalLine = document.createElement('p');
+    totalLine.className = 'perf-sub';
+    totalLine.style.textAlign = 'center';
+    totalLine.textContent = s.total + (s.total === 1 ? ' partida' : ' partidas');
+    card.appendChild(totalLine);
+
+    const streakLine = document.createElement('p');
+    streakLine.style.textAlign = 'center';
+    streakLine.style.color = s.streakType === 'Victoria' ? 'var(--success)' : s.streakType ? 'var(--danger)' : '';
+    streakLine.textContent = s.streakType ? 'Racha: ' + s.streakCount + (s.streakType === 'Victoria' ? 'V' : 'D') : 'Racha: -';
+    card.appendChild(streakLine);
+
+    const arrowsLine = document.createElement('p');
+    arrowsLine.style.textAlign = 'center';
+    arrowsLine.innerHTML = s.lastResults.map(r =>
+      '<span style="color:' + (r === 'Victoria' ? 'var(--success)' : 'var(--danger)') + '">' + (r === 'Victoria' ? '▲' : '▼') + '</span>'
+    ).join(' ') || '<span class="perf-sub">-</span>';
+    card.appendChild(arrowsLine);
+
+    leaderStatsList.appendChild(card);
   });
 }
 
@@ -2965,6 +3046,19 @@ rivalsClose.addEventListener('click', () => {
 
 rivalsOverlay.addEventListener('click', (e) => {
   if (e.target === rivalsOverlay) rivalsOverlay.classList.remove('show');
+});
+
+leaderStatsBtn.addEventListener('click', () => {
+  renderLeaderStatsGrid();
+  leaderStatsOverlay.classList.add('show');
+});
+
+leaderStatsClose.addEventListener('click', () => {
+  leaderStatsOverlay.classList.remove('show');
+});
+
+leaderStatsOverlay.addEventListener('click', (e) => {
+  if (e.target === leaderStatsOverlay) leaderStatsOverlay.classList.remove('show');
 });
 
 document.querySelectorAll('.btn[data-group], .btn-win[data-group], .btn-lose[data-group]').forEach(btn => {
