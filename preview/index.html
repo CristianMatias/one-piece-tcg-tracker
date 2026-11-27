@@ -771,9 +771,10 @@
   #leader-stats-list .leader-stats-info { flex: 1; min-width: 0; }
   #leader-stats-list .leader-stats-row { display: flex; justify-content: space-between; gap: 8px; }
   #leader-stats-list .leader-stats-arrows { margin-top: 2px; line-height: 0; }
-  #leader-stats-list .leader-stats-recent { display: flex; gap: 6px; margin-top: 4px; }
-  #leader-stats-list .leader-stats-recent-item { width: 32px; aspect-ratio: 3/4; border-radius: 6px; overflow: hidden; border: 2px solid; flex-shrink: 0; }
+  #leader-stats-list .leader-stats-recent { display: flex; gap: 6px; margin-top: 4px; justify-content: center; }
+  #leader-stats-list .leader-stats-recent-item { box-sizing: border-box; width: 32px; aspect-ratio: 3/4; border-radius: 6px; overflow: hidden; border: 2px solid; flex-shrink: 0; }
   #leader-stats-list .leader-stats-recent-item .leader-grid-photo { border: none; border-radius: 0; pointer-events: none; }
+  #leader-stats-list .leader-stats-recent-item .leader-grid-photo img { object-position: center; }
   .leader-grid-photo {
     width: 100%;
     aspect-ratio: 3 / 4;
