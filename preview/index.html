@@ -2357,12 +2357,15 @@ function buildStreakSparkline(lastResults, uid) {
   const w = 180, h = 42, topY = 10, botY = 32;
   const color = lastResults[lastResults.length - 1] === 'Victoria' ? 'var(--success)' : 'var(--danger)';
   const n = lastResults.length;
-  const pts = lastResults.map((r, i) => (n === 1 ? w : Math.round((i / (n - 1)) * w)) + ',' + (r === 'Victoria' ? topY : botY));
-  // shortcut: with only 1 result there's no real trend, draw a short stub from the edge so the arrowhead still has a direction to point in
-  const pointsAttr = n === 1 ? ('0,' + (lastResults[0] === 'Victoria' ? botY : topY) + ' ' + pts[0]) : pts.join(' ');
+  // All-same (or a lone result) has no zigzag to draw: one straight edge-to-edge
+  // line rising for an all-victoria run, falling for an all-derrota run.
+  const allSame = lastResults.every(r => r === lastResults[0]);
+  const pointsAttr = allSame
+    ? (lastResults[0] === 'Victoria' ? '0,' + botY + ' ' + w + ',' + topY : '0,' + topY + ' ' + w + ',' + botY)
+    : lastResults.map((r, i) => Math.round((i / (n - 1)) * w) + ',' + (r === 'Victoria' ? topY : botY)).join(' ');
   return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' +
     '<defs><marker id="streak-arrow-' + uid + '" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="' + color + '"/></marker></defs>' +
-    '<polyline points="' + pointsAttr + '" fill="none" stroke="' + color + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#streak-arrow-' + uid + ')"/>' +
+    '<polyline points="' + pointsAttr + '" fill="none" stroke="' + color + '" stroke-width="3" stroke-linecap="butt" stroke-linejoin="round" marker-end="url(#streak-arrow-' + uid + ')"/>' +
     '</svg>';
 }
 
