@@ -771,6 +771,9 @@
   #leader-stats-list .leader-stats-info { flex: 1; min-width: 0; }
   #leader-stats-list .leader-stats-row { display: flex; justify-content: space-between; gap: 8px; }
   #leader-stats-list .leader-stats-arrows { margin-top: 2px; line-height: 0; }
+  #leader-stats-list .leader-stats-recent { display: flex; gap: 6px; margin-top: 4px; }
+  #leader-stats-list .leader-stats-recent-item { width: 32px; aspect-ratio: 3/4; border-radius: 6px; overflow: hidden; border: 2px solid; flex-shrink: 0; }
+  #leader-stats-list .leader-stats-recent-item .leader-grid-photo { border: none; border-radius: 0; pointer-events: none; }
   .leader-grid-photo {
     width: 100%;
     aspect-ratio: 3 / 4;
@@ -2345,8 +2348,9 @@ function leaderOverallStats(name) {
     running = m.resultado === 'Victoria' ? running + 1 : 0;
     if (running > longestStreak) longestStreak = running;
   });
-  const lastResults = ownForStats.slice(-5).map(m => m.resultado);
-  return { hasRecord: own.length > 0, total, wins, streakCount, streakType, longestStreak, lastResults };
+  const lastMatches = ownForStats.slice(-5).map(m => ({ resultado: m.resultado, liderRival: m.liderRival }));
+  const lastResults = lastMatches.map(m => m.resultado);
+  return { hasRecord: own.length > 0, total, wins, streakCount, streakType, longestStreak, lastResults, lastMatches };
 }
 
 // Zigzag mini-graph of the last results (up = victoria, down = derrota),
@@ -2415,6 +2419,20 @@ function renderLeaderStatsGrid() {
     arrowsLine.className = 'leader-stats-arrows';
     arrowsLine.innerHTML = buildStreakSparkline(s.lastResults, idx);
     info.appendChild(arrowsLine);
+
+    if (s.lastMatches.length) {
+      const recent = document.createElement('div');
+      recent.className = 'leader-stats-recent';
+      s.lastMatches.forEach(m => {
+        const item = document.createElement('div');
+        item.className = 'leader-stats-recent-item';
+        item.style.borderColor = m.resultado === 'Victoria' ? 'var(--success)' : 'var(--danger)';
+        item.title = m.liderRival + ' (' + (m.resultado === 'Victoria' ? 'V' : 'D') + ')';
+        item.appendChild(buildLeaderGridPhotoBox(m.liderRival));
+        recent.appendChild(item);
+      });
+      info.appendChild(recent);
+    }
 
     card.appendChild(info);
     leaderStatsList.appendChild(card);
