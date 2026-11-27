@@ -770,7 +770,7 @@
   #leader-stats-list .leader-grid-photo { width: 64px; flex-shrink: 0; }
   #leader-stats-list .leader-stats-info { flex: 1; min-width: 0; }
   #leader-stats-list .leader-stats-row { display: flex; justify-content: space-between; gap: 8px; }
-  #leader-stats-list .leader-stats-arrows { font-size: 15px; letter-spacing: 3px; margin-top: 2px; }
+  #leader-stats-list .leader-stats-arrows { margin-top: 2px; line-height: 0; }
   .leader-grid-photo {
     width: 100%;
     aspect-ratio: 3 / 4;
@@ -2349,6 +2349,23 @@ function leaderOverallStats(name) {
   return { hasRecord: own.length > 0, total, wins, streakCount, streakType, longestStreak, lastResults };
 }
 
+// Zigzag mini-graph of the last results (up = victoria, down = derrota),
+// ending in an arrowhead so the trend direction is obvious at a glance.
+// Whole line is colored by the most recent result, not per-segment.
+function buildStreakSparkline(lastResults, uid) {
+  if (!lastResults.length) return '<span class="perf-sub">-</span>';
+  const w = 180, h = 42, topY = 10, botY = 32;
+  const color = lastResults[lastResults.length - 1] === 'Victoria' ? 'var(--success)' : 'var(--danger)';
+  const n = lastResults.length;
+  const pts = lastResults.map((r, i) => (n === 1 ? w : Math.round((i / (n - 1)) * w)) + ',' + (r === 'Victoria' ? topY : botY));
+  // shortcut: with only 1 result there's no real trend, draw a short stub from the edge so the arrowhead still has a direction to point in
+  const pointsAttr = n === 1 ? ('0,' + (lastResults[0] === 'Victoria' ? botY : topY) + ' ' + pts[0]) : pts.join(' ');
+  return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' +
+    '<defs><marker id="streak-arrow-' + uid + '" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="' + color + '"/></marker></defs>' +
+    '<polyline points="' + pointsAttr + '" fill="none" stroke="' + color + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#streak-arrow-' + uid + ')"/>' +
+    '</svg>';
+}
+
 function renderLeaderStatsGrid() {
   let names = sortedLeaders().map(name => ({ name, s: leaderOverallStats(name) }))
     .filter(x => x.s.hasRecord)
@@ -2359,7 +2376,7 @@ function renderLeaderStatsGrid() {
     leaderStatsList.innerHTML = '<p class="empty">Todavia no hay partidas registradas.</p>';
     return;
   }
-  names.forEach(({ name, s }) => {
+  names.forEach(({ name, s }, idx) => {
     const pct = s.total ? Math.round((s.wins / s.total) * 100) : 0;
     const card = document.createElement('div');
     card.className = 'leader-grid-card';
@@ -2390,9 +2407,7 @@ function renderLeaderStatsGrid() {
 
     const arrowsLine = document.createElement('p');
     arrowsLine.className = 'leader-stats-arrows';
-    arrowsLine.innerHTML = s.lastResults.map(r =>
-      '<span style="color:' + (r === 'Victoria' ? 'var(--success)' : 'var(--danger)') + '">' + (r === 'Victoria' ? '▲' : '▼') + '</span>'
-    ).join('') || '<span class="perf-sub">-</span>';
+    arrowsLine.innerHTML = buildStreakSparkline(s.lastResults, idx);
     info.appendChild(arrowsLine);
 
     card.appendChild(info);
