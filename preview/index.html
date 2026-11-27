@@ -763,6 +763,14 @@
     flex-direction: column;
     gap: 6px;
   }
+  /* Wider tile than the other leader-grids so a line can hold two stats
+     side by side instead of stacking everything tall and narrow. */
+  #leader-stats-list { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+  #leader-stats-list .leader-grid-card { flex-direction: row; align-items: center; padding: 10px; gap: 10px; }
+  #leader-stats-list .leader-grid-photo { width: 64px; flex-shrink: 0; }
+  #leader-stats-list .leader-stats-info { flex: 1; min-width: 0; }
+  #leader-stats-list .leader-stats-row { display: flex; justify-content: space-between; gap: 8px; }
+  #leader-stats-list .leader-stats-arrows { font-size: 15px; letter-spacing: 3px; margin-top: 2px; }
   .leader-grid-photo {
     width: 100%;
     aspect-ratio: 3 / 4;
@@ -887,6 +895,7 @@
     .col::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
     .colors-overlay .modal-card { max-width: 900px; }
     .colors-list { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    #leader-stats-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 </style>
 </head>
@@ -2331,8 +2340,13 @@ function leaderOverallStats(name) {
     streakType = ownForStats[total - 1].resultado;
     for (let i = total - 1; i >= 0 && ownForStats[i].resultado === streakType; i--) streakCount++;
   }
+  let longestStreak = 0, running = 0;
+  ownForStats.forEach(m => {
+    running = m.resultado === 'Victoria' ? running + 1 : 0;
+    if (running > longestStreak) longestStreak = running;
+  });
   const lastResults = ownForStats.slice(-5).map(m => m.resultado);
-  return { hasRecord: own.length > 0, total, wins, streakCount, streakType, lastResults };
+  return { hasRecord: own.length > 0, total, wins, streakCount, streakType, longestStreak, lastResults };
 }
 
 function renderLeaderStatsGrid() {
@@ -2351,37 +2365,37 @@ function renderLeaderStatsGrid() {
     card.className = 'leader-grid-card';
     card.appendChild(buildLeaderGridPhotoBox(name));
 
+    const info = document.createElement('div');
+    info.className = 'leader-stats-info';
+
     const label = document.createElement('p');
     label.className = 'color-row-name';
-    label.style.textAlign = 'center';
+    label.style.textAlign = 'left';
     label.textContent = name;
     label.title = name;
-    card.appendChild(label);
+    info.appendChild(label);
 
-    const stat = document.createElement('p');
-    stat.style.textAlign = 'center';
-    stat.innerHTML = '<span class="perf-pct ' + (pct >= 50 ? 'good' : 'bad') + '">' + pct + '%</span>';
-    card.appendChild(stat);
+    const row1 = document.createElement('p');
+    row1.className = 'leader-stats-row';
+    row1.innerHTML = '<span class="perf-pct ' + (pct >= 50 ? 'good' : 'bad') + '">' + pct + '%</span>' +
+      '<span class="perf-sub">' + s.total + (s.total === 1 ? ' partida' : ' partidas') + '</span>';
+    info.appendChild(row1);
 
-    const totalLine = document.createElement('p');
-    totalLine.className = 'perf-sub';
-    totalLine.style.textAlign = 'center';
-    totalLine.textContent = s.total + (s.total === 1 ? ' partida' : ' partidas');
-    card.appendChild(totalLine);
-
-    const streakLine = document.createElement('p');
-    streakLine.style.textAlign = 'center';
-    streakLine.style.color = s.streakType === 'Victoria' ? 'var(--success)' : s.streakType ? 'var(--danger)' : '';
-    streakLine.textContent = s.streakType ? 'Racha: ' + s.streakCount + (s.streakType === 'Victoria' ? 'V' : 'D') : 'Racha: -';
-    card.appendChild(streakLine);
+    const row2 = document.createElement('p');
+    row2.className = 'leader-stats-row perf-sub';
+    const streakColor = s.streakType === 'Victoria' ? 'var(--success)' : s.streakType ? 'var(--danger)' : '';
+    row2.innerHTML = '<span style="color:' + streakColor + '">Racha: ' + (s.streakType ? s.streakCount + (s.streakType === 'Victoria' ? 'V' : 'D') : '-') + '</span>' +
+      '<span>Max: ' + s.longestStreak + 'V</span>';
+    info.appendChild(row2);
 
     const arrowsLine = document.createElement('p');
-    arrowsLine.style.textAlign = 'center';
+    arrowsLine.className = 'leader-stats-arrows';
     arrowsLine.innerHTML = s.lastResults.map(r =>
       '<span style="color:' + (r === 'Victoria' ? 'var(--success)' : 'var(--danger)') + '">' + (r === 'Victoria' ? '▲' : '▼') + '</span>'
-    ).join(' ') || '<span class="perf-sub">-</span>';
-    card.appendChild(arrowsLine);
+    ).join('') || '<span class="perf-sub">-</span>';
+    info.appendChild(arrowsLine);
 
+    card.appendChild(info);
     leaderStatsList.appendChild(card);
   });
 }
